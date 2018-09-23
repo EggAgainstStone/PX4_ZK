@@ -109,6 +109,7 @@
 #include <uORB/topics/vehicle_status_flags.h>
 #include <uORB/topics/vtol_vehicle_status.h>
 #include <uORB/uORB.h>
+#include "qiaoliang/qiaoliang_define.h"
 
 typedef enum VEHICLE_MODE_FLAG
 {
@@ -2257,6 +2258,13 @@ Commander::run()
 				    internal_state.main_state != commander_state_s::MAIN_STATE_ACRO &&
 				    internal_state.main_state != commander_state_s::MAIN_STATE_STAB &&
 				    internal_state.main_state != commander_state_s::MAIN_STATE_RATTITUDE &&
+#if __DAVID_ARMED_FIX__
+
+					internal_state.main_state != commander_state_s::MAIN_STATE_ALTCTL &&
+					internal_state.main_state != commander_state_s::MAIN_STATE_POSCTL &&
+					internal_state.main_state != commander_state_s::MAIN_STATE_AUTO_RTL &&
+					internal_state.main_state != commander_state_s::MAIN_STATE_AUTO_LAND &&
+#endif/*__DAVID_ARMED_FIX__*/				
 				    !land_detector.landed) {
 					print_reject_arm("NOT DISARMING: Not in manual mode or landed yet.");
 

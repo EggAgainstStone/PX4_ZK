@@ -92,6 +92,7 @@
 #include "parameters.h"
 #include "rc_update.h"
 #include "voted_sensors_update.h"
+#include "qiaoliang/qiaoliang_define.h"
 
 using namespace DriverFramework;
 using namespace sensors;
@@ -443,8 +444,14 @@ Sensors::adc_poll()
 		/* The ADC channels that  are associated with each brick, in power controller
 		 * priority order highest to lowest, as defined by the board config.
 		 */
+#if __BATT_SERIAL__
+#else/*__BATT_SERIAL__*/			 
 		int   bat_voltage_v_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_V_LIST;
 		int   bat_voltage_i_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_I_LIST;
+
+		if (_parameters.battery_adc_channel >= 0) {  // overwrite default
+			bat_voltage_v_chan[0] = _parameters.battery_adc_channel;
+		}
 
 		/* The valid signals (HW dependent) are associated with each brick */
 		bool  valid_chan[BOARD_NUMBER_BRICKS] = BOARD_BRICK_VALID_LIST;
@@ -459,6 +466,7 @@ Sensors::adc_poll()
 		 */
 
 		int selected_source = -1;
+#endif/*__BATT_SERIAL__*/
 
 #endif /* BOARD_NUMBER_BRICKS > 0 */
 
@@ -495,6 +503,8 @@ Sensors::adc_poll()
 				} else
 #endif /* ADC_AIRSPEED_VOLTAGE_CHANNEL */
 				{
+#if	__BATT_SERIAL__
+#else
 
 #if BOARD_NUMBER_BRICKS > 0
 
@@ -534,6 +544,7 @@ Sensors::adc_poll()
 							bat_current_a[b] = ((buf_adc[i].am_data * _parameters.battery_current_scaling)
 									    - _parameters.battery_current_offset) * _parameters.battery_a_per_v;
 						}
+#endif						
 					}
 
 #endif /* BOARD_NUMBER_BRICKS > 0 */
@@ -541,6 +552,8 @@ Sensors::adc_poll()
 			}
 
 #if BOARD_NUMBER_BRICKS > 0
+#if __BATT_SERIAL__
+#else/*__BATT_SERIAL__*/	
 
 			if (_parameters.battery_source == 0) {
 
@@ -569,6 +582,7 @@ Sensors::adc_poll()
 					orb_publish_auto(ORB_ID(battery_status), &_battery_pub[b], &battery_status, &instance, ORB_PRIO_DEFAULT);
 				}
 			}
+#endif/*__BATT_SERIAL__*/	
 
 #endif /* BOARD_NUMBER_BRICKS > 0 */
 

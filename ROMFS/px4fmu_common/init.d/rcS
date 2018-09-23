@@ -976,6 +976,9 @@ fi
 	then
 		send_event temperature_calibration ${TEMP_CALIB_ARGS}
 	fi
+	mb12xx start &
+	batt_smbus_serial start -d /dev/ttyS2
+	
 	unset TEMP_CALIB_ARGS
 
 	# vmount to control mounts such as gimbals, disabled by default.

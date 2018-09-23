@@ -16,11 +16,23 @@ uint16 cycle_count         # number of discharge cycles the battery has experien
 uint16 run_time_to_empty   # predicted remaining battery capacity based on the present rate of discharge in min
 uint16 average_time_to_empty   # predicted remaining battery capacity based on the average rate of discharge in min
 uint16 serial_number       # serial number of the battery pack
-
+float32 voltage_v1		
+float32 voltage_v2		
+float32 voltage_v3		
+float32 voltage_v4		
+float32 voltage_v5		
+float32 voltage_v6		
+uint16 	battery_status
+uint16  charge_battery
+uint8 	system_status
+uint8 	error_status
+uint8 	dcm_status
+uint8 	res_status
+float32 remaining_mah
+float32 temperature1
+float32 power
 
 bool is_powering_off		# Power off event imminent indication, false if unknown
-
-
 uint8 BATTERY_WARNING_NONE = 0       # no battery low voltage warning active
 uint8 BATTERY_WARNING_LOW = 1        # warning of low voltage
 uint8 BATTERY_WARNING_CRITICAL = 2   # critical voltage, return / abort immediately

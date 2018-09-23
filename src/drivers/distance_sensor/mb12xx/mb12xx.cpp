@@ -70,10 +70,11 @@
 #include <uORB/topics/distance_sensor.h>
 
 #include <board_config.h>
+#include "qiaoliang/qiaoliang_define.h"
 
 /* Configuration Constants */
-#define MB12XX_BUS 		PX4_I2C_BUS_EXPANSION
-#define MB12XX_BASEADDR 	0x70 /* 7-bit address. 8-bit address is 0xE0 */
+#define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
+#define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
 #define MB12XX_DEVICE_PATH	"/dev/mb12xx"
 
 /* MB12xx Registers addresses */
@@ -84,10 +85,57 @@
 
 /* Device limits */
 #define MB12XX_MIN_DISTANCE 	(0.20f)
-#define MB12XX_MAX_DISTANCE 	(7.65f)
+#define MB12XX_MAX_DISTANCE 	(2.5f)
 
 #define MB12XX_CONVERSION_INTERVAL 	100000 /* 60ms for one sonar */
 #define TICKS_BETWEEN_SUCCESIVE_FIRES 	100000 /* 30ms between each sonar measurement (watch out for interference!) */
+
+#define SENSOR_POINT_FRONT  (0)
+#define SENSOR_POINT_BACK  (1)
+#define SENSOR_POINT_LEFT  (2)
+#define SENSOR_POINT_RIGHT  (3)
+
+#if __DISTANCE_FILTER__
+#define F_N_D 3
+#define MAX_OUT 3
+#define DELTA_DISTANCE 0.3f
+#define DELTA_DISTANCE_UP 0.2f
+
+static float value_buf_0[F_N_D];
+static float value_buf_1[F_N_D];
+//static float value_buf_2[F_N_D];
+static float value_buf_3[F_N_D];
+
+static uint8_t count_0=0;
+static uint8_t count_1=0;
+//static uint8_t count_2=0;
+static uint8_t count_3=0;
+
+static float filter_sonic_0 = 0;
+static float filter_sonic_1 = 0;
+//static float filter_sonic_2 = 0;
+static float filter_sonic_3 = 0;
+#endif/*__DISTANCE_FILTER__*/
+
+#if __DISTANCE_KS103__
+
+#define SENSOR_POINT_FRONT2  (4)
+#define SENSOR_POINT_BACK2 (5)
+#define SENSOR_POINT_LEFT2  (6)
+#define SENSOR_POINT_RIGHT2  (7)
+
+
+static const uint8_t g_slave_addr[MB12XX_MAX_RANGEFINDERS] = {0x74,0x68,0x69,0x6a,0xd2,0xd3,0xd4,0xd6};
+static const uint8_t g_id_addr_map[MB12XX_MAX_RANGEFINDERS][MB12XX_MAX_RANGEFINDERS] =
+{
+    {SENSOR_POINT_FRONT,0x74},{SENSOR_POINT_BACK,0x68},{SENSOR_POINT_LEFT,0x69},{SENSOR_POINT_RIGHT,0x6a},
+     {SENSOR_POINT_FRONT2,0xd2},{SENSOR_POINT_BACK2,0xd3},{SENSOR_POINT_LEFT2,0xd4},{SENSOR_POINT_RIGHT2,0xd6}
+
+};
+
+#endif/*__DISTANCE_KS103__*/
+
+
 
 #ifndef CONFIG_SCHED_WORKQUEUE
 # error This requires CONFIG_SCHED_WORKQUEUE.
@@ -169,6 +217,16 @@ private:
 	void				set_maximum_distance(float max);
 	float				get_minimum_distance();
 	float				get_maximum_distance();
+#if __DISTANCE_FILTER__
+	float 				_filter(float value,float *value_buf);//fiter function
+#endif/*__DISTANCE_FILTER__*/
+
+#if __DISTANCE_KS103__	
+  	int8_t               getIdByAddr(uint16_t addr);
+	int 				 change_address(uint8_t newaddr);
+  	int 				 close_scl_low();
+#endif/*__DISTANCE_KS103__*/
+	
 
 	/**
 	* Perform a poll cycle; collect from the previous measurement
@@ -244,6 +302,16 @@ MB12XX::init()
 	int ret = PX4_ERROR;
 
 	/* do I2C init (and probe) first */
+#if __DISTANCE_KS103__	
+    uint8_t i = 0;
+
+	/* do I2C init (and probe) first */
+    for (i = 0; i < 4;i++)
+    {
+        I2C::set_bus_clock(i,0);
+    }
+#endif/*__DISTANCE_KS103__*/
+
 	if (I2C::init() != OK) {
 		return ret;
 	}
@@ -276,17 +344,27 @@ MB12XX::init()
 	/* check for connected rangefinders on each i2c port:
 	   We start from i2c base address (0x70 = 112) and count downwards
 	   So second iteration it uses i2c address 111, third iteration 110 and so on*/
-	for (unsigned counter = 0; counter <= MB12XX_MAX_RANGEFINDERS; counter++) {
+	for (unsigned counter = 0; counter < MB12XX_MAX_RANGEFINDERS; counter++) {
+#if __DISTANCE_KS103__
+		_index_counter = g_slave_addr[counter]; /* set temp sonar i2c address to base adress - counter */
+#else/*__DISTANCE_KS103__*/
 		_index_counter = MB12XX_BASEADDR - counter;	/* set temp sonar i2c address to base adress - counter */
-		set_device_address(_index_counter);			/* set I2c port to temp sonar i2c adress */
-		int ret2 = measure();
+#endif/*__DISTANCE_KS103__*/
 
+		set_device_address(_index_counter);			/* set I2c port to temp sonar i2c adress */
+
+#if __DISTANCE_KS103__
+		int ret2 = close_scl_low();
+#else/*__DISTANCE_KS103__*/
+		int ret2 = measure();
+#endif/*__DISTANCE_KS103__*/
 		if (ret2 == 0) { /* sonar is present -> store address_index in array */
 			addr_ind.push_back(_index_counter);
 			DEVICE_DEBUG("sonar added");
 			_latest_sonar_measurements.push_back(200);
 		}
 	}
+	PX4_ERR("MB12XX::---11----init()");
 
 	_index_counter = MB12XX_BASEADDR;
 	set_device_address(_index_counter); /* set i2c port back to base adress for rest of driver */
@@ -316,7 +394,11 @@ MB12XX::init()
 int
 MB12XX::probe()
 {
+#if __DISTANCE_KS103__
+    return OK;
+#else/*__DISTANCE_KS103__*/
 	return measure();
+#endif/*__DISTANCE_KS103__*/
 }
 
 void
@@ -342,6 +424,21 @@ MB12XX::get_maximum_distance()
 {
 	return _max_distance;
 }
+#if __DISTANCE_FILTER__
+float
+MB12XX::_filter(float value,float *value_buf){
+
+	float sum = value;
+
+	for (int i=0;i<F_N_D - 1;i++){
+		value_buf[i]=value_buf[i+1];
+		sum += value_buf[i];
+	}
+	value_buf[F_N_D-1] = value;
+	return (float)(sum/(F_N_D));
+
+}
+#endif/*__DISTANCE_FILTER__*/
 
 int
 MB12XX::ioctl(device::file_t *filp, int cmd, unsigned long arg)
@@ -504,6 +601,133 @@ MB12XX::read(device::file_t *filp, char *buffer, size_t buflen)
 	return ret;
 }
 
+#if __DISTANCE_KS103__
+int
+MB12XX::change_address(uint8_t newaddr)
+{
+    uint8_t cmd[2] = {0,0};
+    uint8_t ret  = -1;
+    cmd[0] = 0x02;
+    cmd[1] = 0x9a;
+    ret = transfer(&cmd[0],2,nullptr,0);             //默认原地址是0x00;
+    if (OK != ret) {
+        perf_count(_comms_errors);
+        DEVICE_DEBUG("i2c::transfer returned %d", ret);
+        return ret;
+    }
+    usleep(10000);
+
+    cmd[0] = 0x02;
+    cmd[1] = 0x92;
+    ret = transfer(&cmd[0],2,nullptr,0);             //默认原地址是0x00;
+    if (OK != ret) {
+        perf_count(_comms_errors);
+        DEVICE_DEBUG("i2c::transfer returned %d", ret);
+        return ret;
+    }
+    usleep(10000);
+
+    cmd[0] = 0x02;
+    cmd[1] = 0x9e;
+    ret = transfer(&cmd[0],2,nullptr,0);
+    if (OK != ret) {
+        perf_count(_comms_errors);
+        DEVICE_DEBUG("i2c::transfer returned %d", ret);
+        return ret;
+    }
+    usleep(10000);
+
+    cmd[0] = 0x02;
+    cmd[1] = newaddr;
+    ret = transfer(&cmd[0],2,nullptr,0);
+    if (OK != ret) {
+        perf_count(_comms_errors);
+        DEVICE_DEBUG("i2c::transfer returned %d", ret);
+        return ret;
+    }
+    usleep(500000);
+
+    return ret;
+}
+
+int
+MB12XX::close_scl_low()
+{
+
+    uint8_t ret = 0;
+	
+	int csb;
+	int ks103=1;
+	int zhikun=0;
+	uint8_t  SRO4[4]={0xd2,0xd3,0xd4,0xd6};
+	uint8_t  KS103[4]={0x74,0x68,0x69,0x6a};
+	if(_index_counter==SRO4[0]||_index_counter==SRO4[1]||_index_counter==SRO4[2]||_index_counter==SRO4[3])
+		{
+		csb=zhikun;
+		}
+	if(_index_counter==KS103[0]||_index_counter==KS103[1]||_index_counter==KS103[2]||_index_counter==KS103[3])
+		{
+		csb=ks103;
+		}
+	if(csb==zhikun){
+
+        uint8_t  cmt=0x05;
+        ret = transfer(&cmt, 1, nullptr, 0);
+         if (OK != ret) {
+             perf_count(_comms_errors);
+             DEVICE_DEBUG("i2c::transfer returned %d", ret);
+             return ret;
+            }
+        }
+	/*if(csb==ks103){
+        uint8_t cmd[2] = {0x02,0xb4};
+        ret = transfer(&cmd[0], 2, nullptr, 0);
+        if (OK != ret) {
+            perf_count(_comms_errors);
+            DEVICE_DEBUG("i2c::transfer returned %d", ret);
+            return ret;
+            }
+        }*/
+    
+	  //uint8_t cmd[2] = {2,0x75};
+	
+	//	ret = transfer(&cmd[0], 2,nullptr, 0);
+	PX4_DEBUG("-----sonar close_scl_low  ----");
+
+
+    uint8_t cmd[2] = {2,0xc3};
+
+    ret = transfer(&cmd[0], 2,nullptr, 0);
+	
+    if (OK != ret) {
+        perf_count(_comms_errors);
+        DEVICE_DEBUG("i2c::transfer returned %d", ret);
+        return ret;
+    }
+
+
+
+    ret = OK;
+    return ret;
+}
+
+int8_t
+MB12XX::getIdByAddr(uint16_t addr)
+{
+    uint8_t i = 0;
+    for (i = 0;i < MB12XX_MAX_RANGEFINDERS;i++)
+    {
+        if ((uint8_t)addr == g_id_addr_map[i][1])
+        {
+            return g_id_addr_map[i][0];
+        }
+    }
+
+    return 0xff;
+}
+
+#endif/*__DISTANCE_KS103__*/
+
 int
 MB12XX::measure()
 {
@@ -513,6 +737,34 @@ MB12XX::measure()
 	/*
 	 * Send the command to begin a measurement.
 	 */
+#if  __DISTANCE_KS103__
+				int csb;
+				int ks103=1;
+				int zhikun=0;
+
+				uint8_t  SRO4[4]={0xd2,0xd3,0xd4,0xd6};
+				uint8_t  KS103[4]={0x74,0x68,0x69,0x6a};
+				
+				if(_index_counter==SRO4[0]||_index_counter==SRO4[1]||_index_counter==SRO4[2]||_index_counter==SRO4[3])
+				{
+					csb=zhikun;
+				}
+				if(_index_counter==KS103[0]||_index_counter==KS103[1]||_index_counter==KS103[2]||_index_counter==KS103[3])
+				{
+					csb=ks103;
+				}
+				if(csb==ks103){
+
+					uint8_t cmd[2] = {0x02,0xb4};
+
+			    ret = transfer(&cmd[0], 2, nullptr, 0);
+			    if (OK != ret) {
+					perf_count(_comms_errors);
+					DEVICE_DEBUG("i2c::transfer returned %d", ret);
+					return ret;
+		}
+	}
+#else/*__DISTANCE_KS103__*/
 
 	uint8_t cmd = MB12XX_TAKE_RANGE_REG;
 	ret = transfer(&cmd, 1, nullptr, 0);
@@ -524,29 +776,180 @@ MB12XX::measure()
 	}
 
 	ret = OK;
-
+#endif/*__DISTANCE_KS103__*/
 	return ret;
 }
 
 int
 MB12XX::collect()
 {
-	int	ret = -EIO;
-
-	/* read from the sensor */
-	uint8_t val[2] = {0, 0};
-
+    int	ret = -EIO;
 	perf_begin(_sample_perf);
+	uint16_t distance_mm=0;
 
-	ret = transfer(nullptr, 0, &val[0], 2);
-
-	if (ret < 0) {
-		DEVICE_DEBUG("error reading from sensor: %d", ret);
-		perf_count(_comms_errors);
-		perf_end(_sample_perf);
-		return ret;
+	DEVICE_DEBUG("collect distance_mm %d",distance_mm);
+#if  __DISTANCE_KS103__
+	int csb;
+	int ks103=1;
+	int zhikun=0;
+	uint8_t  SRO4[4]={0xd2,0xd3,0xd4,0xd6};
+	uint8_t  KS103[4]={0x74,0x68,0x69,0x6a};
+	
+	if(_index_counter==SRO4[0]||_index_counter==SRO4[1]||_index_counter==SRO4[2]||_index_counter==SRO4[3])
+	{
+		csb=zhikun;
 	}
+	if(_index_counter==KS103[0]||_index_counter==KS103[1]||_index_counter==KS103[2]||_index_counter==KS103[3])
+	{
+		csb=ks103;
+	}
+    if(csb==ks103){
 
+    /* read from the sensor */
+    uint8_t val[2] = {0, 0};
+    uint8_t cmd = 0;
+    cmd = 2;
+    ret = transfer(&cmd, 1,nullptr,0);
+    if (ret < 0) {
+        DEVICE_DEBUG("error send read command: %d", ret);
+        perf_count(_comms_errors);
+        perf_end(_sample_perf);
+        return ret;
+    }
+
+    usleep(200);
+    ret = transfer(nullptr,0,&val[0],1);
+    if (ret < 0) {
+        DEVICE_DEBUG("error reading from register 2: %d", ret);
+        perf_count(_comms_errors);
+        perf_end(_sample_perf);
+        return ret;
+    }
+    //printf("collect val[0] = 0x%x,val[1] = %x\r\n",val[0],val[1]);
+
+
+    cmd = 0x3;
+    ret = transfer(&cmd,1,nullptr,0);
+    if (ret < 0) {
+        DEVICE_DEBUG("error send read command: %d", ret);
+        perf_count(_comms_errors);
+        perf_end(_sample_perf);
+        return ret;
+    }
+
+   usleep(200);
+    ret = transfer(nullptr,0,&val[1],1);
+    if (ret < 0) {
+        DEVICE_DEBUG("error reading from register 2: %d", ret);
+        perf_count(_comms_errors);
+        perf_end(_sample_perf);
+        return ret;
+    }
+		distance_mm = val[0] << 8 | val[1];
+
+#if __DISTANCE_FILTER__ 
+}
+   if(csb==zhikun){
+       uint8_t val = 0;
+        ret = transfer(nullptr,0,&val,1);
+        if (ret < 0) {
+            DEVICE_DEBUG("error reading from register 2: %d", ret);
+            perf_count(_comms_errors);
+            perf_end(_sample_perf);
+            return ret;
+        }
+        distance_mm=val*10;
+}
+#endif
+		struct distance_sensor_s report;
+		report.id = getIdByAddr(addr_ind[_cycle_counter]);
+		float distance_m = float(distance_mm)*1e-3f;
+
+PX4_WARN("distance_m %.3f",(double)distance_m);
+
+#if __DISTANCE_FILTER__		
+		if(report.id==0||report.id==4){
+			filter_sonic_0 = _filter(distance_m,value_buf_0);
+			if(fabsf(distance_m-filter_sonic_0)>DELTA_DISTANCE){
+				count_0++;
+				report.current_distance =value_buf_0[0];
+				if(count_0>MAX_OUT){
+					for(int i=0;i<F_N_D;i++){
+						value_buf_0[i]=distance_m;
+					}
+					count_0 = 0;
+				}
+			
+			}else{
+				count_0 = 0;
+				report.current_distance=distance_m;
+			}
+		}
+		if(report.id==1||report.id==5){
+			filter_sonic_1 = _filter(distance_m,value_buf_1);
+			if(fabsf(distance_m-filter_sonic_1)>DELTA_DISTANCE){
+				count_1++;
+				report.current_distance =value_buf_1[0];
+				if(count_1>MAX_OUT){
+					for(int i=0;i<F_N_D;i++){
+						value_buf_1[i]=distance_m;
+					}
+					count_1 = 0;
+				}
+			
+			}else{
+				count_1 = 0;
+				report.current_distance=distance_m;
+			}
+		}
+		
+		if(report.id==2||report.id==6){
+			
+			/*filter_sonic_2 = _filter(distance_m,value_buf_2);
+			if(fabsf(distance_m-filter_sonic_2)>fabsf(DELTA_DISTANCE_UP)){
+				count_2++;
+				report.current_distance =value_buf_2[0];
+				if(count_2>MAX_OUT){
+					for(int i=0;i<F_N_D;i++){
+						value_buf_2[i]=distance_m;
+					}
+					count_2 = 0;
+				}
+			
+			}else{*/
+	//			count_2 = 0;
+				report.current_distance=distance_m;
+			//}
+		}
+	
+		if(report.id==3||report.id==7){
+			filter_sonic_3 = _filter(distance_m,value_buf_3);
+			if(fabsf(distance_m-filter_sonic_3)>DELTA_DISTANCE){
+				count_3++;
+				report.current_distance =value_buf_3[0];
+				if(count_3>MAX_OUT){
+					for(int i=0;i<F_N_D;i++){
+						value_buf_3[i]=distance_m;
+					}
+					count_3 = 0;
+				}
+			
+			}else{
+				count_3 = 0;
+				report.current_distance=distance_m;
+			}
+		}
+#endif/*__DISTANCE_FILTER__*/	
+	report.timestamp = hrt_absolute_time();
+	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
+	report.orientation = 8;
+	report.min_distance = get_minimum_distance();
+	report.max_distance = get_maximum_distance();
+	report.current_distance = distance_m;
+	report.covariance = 0.0f;
+PX4FLOW_WARNX((nullptr,"min_distance %.2f  max %.2f current_distanc %.2f",(double)report.min_distance,(double)report.max_distance,(double)distance_m))
+
+#else/*__DISTANCE_KS103__*/	
 	uint16_t distance_cm = val[0] << 8 | val[1];
 	float distance_m = float(distance_cm) * 1e-2f;
 
@@ -560,6 +963,8 @@ MB12XX::collect()
 	report.covariance = 0.0f;
 	/* TODO: set proper ID */
 	report.id = 0;
+#endif/*__DISTANCE_FILTER__*/
+
 
 	/* publish it, if we are the primary */
 	if (_distance_sensor_topic != nullptr) {
