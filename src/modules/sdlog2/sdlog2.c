@@ -110,6 +110,7 @@
 #include "logbuffer.h"
 #include "sdlog2_format.h"
 #include "sdlog2_messages.h"
+#include "qiaoliang/qiaoliang_define.h"
 
 #define PX4_EPOCH_SECS 1234567890L
 
@@ -1786,6 +1787,26 @@ int sdlog2_thread_main(int argc, char *argv[])
 			/* --- BATTERY --- */
 			if (copy_if_updated(ORB_ID(battery_status), &subs.battery_sub, &buf.battery)) {
 				log_msg.msg_type = LOG_BATT_MSG;
+#if __BATT_SERIAL__
+				log_msg.body.log_BATT.voltage = buf.battery.voltage_v;
+				log_msg.body.log_BATT.current = buf.battery.current_a;
+				log_msg.body.log_BATT.discharged = buf.battery.discharged_mah;
+				log_msg.body.log_BATT.v1 = buf.battery.voltage_v1;
+				log_msg.body.log_BATT.v2 = buf.battery.voltage_v2;
+				log_msg.body.log_BATT.v3 = buf.battery.voltage_v3;
+				log_msg.body.log_BATT.v4 = buf.battery.voltage_v4;
+				log_msg.body.log_BATT.v5 = buf.battery.voltage_v5;
+				log_msg.body.log_BATT.v6 = buf.battery.voltage_v6;
+				log_msg.body.log_BATT.power = buf.battery.power;
+				log_msg.body.log_BATT.error_status = buf.battery.error_status;
+				log_msg.body.log_BATT.system_status = buf.battery.system_status;
+				log_msg.body.log_BATT.dcm_status = buf.battery.dcm_status;
+				log_msg.body.log_BATT.res_status = buf.battery.res_status;
+				log_msg.body.log_BATT.charge_battery = buf.battery.charge_battery;
+				log_msg.body.log_BATT.warning = buf.battery.warning;
+
+
+#else/*__BATT_SERIAL__*/
 				log_msg.body.log_BATT.voltage = buf.battery.voltage_v;
 				log_msg.body.log_BATT.voltage_filtered = buf.battery.voltage_filtered_v;
 				log_msg.body.log_BATT.current = buf.battery.current_a;
@@ -1794,6 +1815,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 				log_msg.body.log_BATT.remaining = buf.battery.remaining;
 				log_msg.body.log_BATT.scale = buf.battery.scale;
 				log_msg.body.log_BATT.warning = buf.battery.warning;
+#endif/*__BATT_SERIAL__*/				
 				LOGBUFFER_WRITE_AND_COUNT(BATT);
 			}
 

@@ -75,7 +75,7 @@ Battery::updateBatteryStatus(hrt_abstime timestamp, float voltage_v, float curre
 	filterThrottle(throttle_normalized);
 	filterCurrent(current_a);
 	sumDischarged(timestamp, current_a);
-	estimateRemaining(_voltage_filtered_v, _current_filtered_a, _throttle_filtered, armed);
+	estimateRemaining(_voltage_filtered_v, _current_filtered_a, _throttle_filtered, armed);//var armed is not used
 	computeScale();
 
 	if (_battery_initialized) {

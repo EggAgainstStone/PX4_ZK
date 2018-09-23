@@ -286,6 +286,25 @@ struct log_GVSP_s {
 /* --- BATT - BATTERY --- */
 #define LOG_BATT_MSG 20
 struct log_BATT_s {
+#if __BATT_SERIAL__
+	float voltage;
+	float current;
+	float discharged;
+	float v1;
+	float v2;
+	float v3;
+	float v4;
+	float v5;
+	float v6;
+	float power;
+	uint8_t error_status;
+	uint8_t system_status;
+	uint8_t dcm_status;
+	uint8_t res_status;
+	uint16_t charge_battery;
+	uint8_t warning;
+
+#else/*__BATT_SERIAL__*/
 	float voltage;
 	float voltage_filtered;
 	float current;
@@ -294,6 +313,8 @@ struct log_BATT_s {
 	float remaining;
 	float scale;
 	uint8_t warning;
+
+#endif/*__BATT_SERIAL__*/	
 };
 
 /* --- DIST - RANGE SENSOR DISTANCE --- */
@@ -612,7 +633,13 @@ static const struct log_format_s log_formats[] = {
 	LOG_FORMAT(GPSP, "LLffBfbf",		"Lat,Lon,Alt,Yaw,Type,LoitR,LoitDir,PitMin"),
 	LOG_FORMAT(ESC, "HBBBHHffiffH",		"count,nESC,Conn,N,Ver,Adr,Volt,Amp,RPM,Temp,SetP,SetPRAW"),
 	LOG_FORMAT(GVSP, "fff",			"VX,VY,VZ"),
+
+#if __BATT_SERIAL__
+	LOG_FORMAT(BATT, "ffffffffffBBBBHB",		"V,C,D,v1,v2,v3,v4,v5,v6,P,err,sys,dcm,res,char,warn"),
+#else/*__BATT_SERIAL__*/
 	LOG_FORMAT(BATT, "fffffffB",		"V,VFilt,C,CFilt,Discharged,Remaining,Scale,Warning"),
+#endif/*__BATT_SERIAL__*/
+	
 	LOG_FORMAT(DIST, "BBBff",			"Id,Type,Orientation,Distance,Covariance"),
 	LOG_FORMAT_S(TEL0, TEL, "BBBBHHBQ",		"RSSI,RemRSSI,Noise,RemNoise,RXErr,Fixed,TXBuf,HbTime"),
 	LOG_FORMAT_S(TEL1, TEL, "BBBBHHBQ",		"RSSI,RemRSSI,Noise,RemNoise,RXErr,Fixed,TXBuf,HbTime"),

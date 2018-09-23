@@ -32,25 +32,11 @@
 
 
 #define __DAVID_YAW_FIX__  						(1)//to fix the yaw bug
-
 #define __ARMED_FIX_1__  						(1)//to lock the stick value when disarming plane
 #define __DAVID_NAV_LOG__  						(1)//to add nav log
 
 
 
-
-#if __DEBUG__
-#  define __PX4FLOW_TEST_						(1)//to print log
-#else
-#  define __PX4FLOW_TEST_						(0)
-
-#endif/*__DEBUG__*/
-
-#if __PX4FLOW_TEST_
-#  define PX4FLOW_WARNX(x)						xia_debug x
-#else
-#  define PX4FLOW_WARNX(x)						
-#endif/*__PX4FLOW_TEST_*/
 
 //#define COMPARE_FLOAT(a,b)	((fabsf((float)(a) - (float)(b)) < FLT_EPSILON) ? 1 : 2)
 

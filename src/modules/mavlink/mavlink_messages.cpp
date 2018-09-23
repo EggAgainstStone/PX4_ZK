@@ -103,6 +103,8 @@
 #include <uORB/topics/vehicle_magnetometer.h>
 #include <uORB/uORB.h>
 
+#include "qiaoliang/qiaoliang_define.h"
+
 using matrix::wrap_2pi;
 
 static uint16_t cm_uint16_from_m_float(float m);
@@ -556,6 +558,7 @@ protected:
 		const bool updated_cpuload = _cpuload_sub->update(&_cpuload_timestamp, &cpuload);
 		const bool updated_battery = _battery_status_sub->update(&_battery_status_timestamp, &battery_status);
 
+
 		if (updated_status || updated_battery || updated_cpuload) {
 			mavlink_sys_status_t msg = {};
 
@@ -566,6 +569,7 @@ protected:
 			msg.voltage_battery = (battery_status.connected) ? battery_status.voltage_filtered_v * 1000.0f : UINT16_MAX;
 			msg.current_battery = (battery_status.connected) ? battery_status.current_filtered_a * 100.0f : -1;
 			msg.battery_remaining = (battery_status.connected) ? ceilf(battery_status.remaining * 100.0f) : -1;
+
 			// TODO: fill in something useful in the fields below
 			msg.drop_rate_comm = 0;
 			msg.errors_comm = 0;
@@ -575,13 +579,24 @@ protected:
 			msg.errors_count4 = 0;
 
 			mavlink_msg_sys_status_send_struct(_mavlink->get_channel(), &msg);
+			PX4_INFO("_mavlink->get_channel() %d",_mavlink->get_channel());
+
+
+
 
 			/* battery status message with higher resolution */
 			mavlink_battery_status_t bat_msg = {};
 			bat_msg.id = 0;
 			bat_msg.battery_function = MAV_BATTERY_FUNCTION_ALL;
+#if __BATT_SERIAL__
+			bat_msg.type = battery_status.system_status;
+			bat_msg.current_consumed =battery_status.current_a*battery_status.voltage_v;
+
+			PX4_INFO("mavlink bat_msg.current_consumed %.7f msg power %d ",(double)bat_msg.current_consumed,bat_msg.type);		
+#else
 			bat_msg.type = MAV_BATTERY_TYPE_LIPO;
 			bat_msg.current_consumed = (battery_status.connected) ? battery_status.discharged_mah : -1;
+#endif/*__BATT_SERIAL__*/
 			bat_msg.energy_consumed = -1;
 			bat_msg.current_battery = (battery_status.connected) ? battery_status.current_filtered_a * 100 : -1;
 			bat_msg.battery_remaining = (battery_status.connected) ? ceilf(battery_status.remaining * 100.0f) : -1;

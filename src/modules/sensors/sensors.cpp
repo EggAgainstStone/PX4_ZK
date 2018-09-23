@@ -343,18 +343,14 @@ Sensors::diff_pres_poll(const vehicle_air_data_s &raw)
 		}
 
 		/* don't risk to feed negative airspeed into the system */
-		airspeed.indicated_airspeed_m_s = math::max(0.0f,
-						  calc_indicated_airspeed_corrected((enum AIRSPEED_COMPENSATION_MODEL)_parameters.air_cmodel,
-								  smodel, _parameters.air_tube_length, _parameters.air_tube_diameter_mm,
-								  diff_pres.differential_pressure_filtered_pa, raw.baro_pressure_pa,
-								  air_temperature_celsius));
+		airspeed.indicated_airspeed_m_s = calc_indicated_airspeed_corrected((enum AIRSPEED_COMPENSATION_MODEL)
+						  _parameters.air_cmodel,
+						  smodel, _parameters.air_tube_length, _parameters.air_tube_diameter_mm,
+						  diff_pres.differential_pressure_filtered_pa, raw.baro_pressure_pa,
+						  air_temperature_celsius);
 
-		airspeed.true_airspeed_m_s = math::max(0.0f,
-						       calc_true_airspeed_from_indicated(airspeed.indicated_airspeed_m_s, raw.baro_pressure_pa, air_temperature_celsius));
-
-		airspeed.true_airspeed_unfiltered_m_s = math::max(0.0f,
-							calc_true_airspeed(diff_pres.differential_pressure_raw_pa + raw.baro_pressure_pa, raw.baro_pressure_pa,
-									air_temperature_celsius));
+		airspeed.true_airspeed_m_s = calc_true_airspeed_from_indicated(airspeed.indicated_airspeed_m_s, raw.baro_pressure_pa,
+					     air_temperature_celsius);
 
 		airspeed.air_temperature_celsius = air_temperature_celsius;
 
@@ -449,10 +445,6 @@ Sensors::adc_poll()
 		int   bat_voltage_v_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_V_LIST;
 		int   bat_voltage_i_chan[BOARD_NUMBER_BRICKS] = BOARD_BATT_I_LIST;
 
-		if (_parameters.battery_adc_channel >= 0) {  // overwrite default
-			bat_voltage_v_chan[0] = _parameters.battery_adc_channel;
-		}
-
 		/* The valid signals (HW dependent) are associated with each brick */
 		bool  valid_chan[BOARD_NUMBER_BRICKS] = BOARD_BRICK_VALID_LIST;
 
@@ -504,7 +496,7 @@ Sensors::adc_poll()
 #endif /* ADC_AIRSPEED_VOLTAGE_CHANNEL */
 				{
 #if	__BATT_SERIAL__
-#else
+#else/*	__BATT_SERIAL__*/
 
 #if BOARD_NUMBER_BRICKS > 0
 
@@ -544,7 +536,8 @@ Sensors::adc_poll()
 							bat_current_a[b] = ((buf_adc[i].am_data * _parameters.battery_current_scaling)
 									    - _parameters.battery_current_offset) * _parameters.battery_a_per_v;
 						}
-#endif						
+				
+#endif/*	__BATT_SERIAL__*/						
 					}
 
 #endif /* BOARD_NUMBER_BRICKS > 0 */
@@ -552,9 +545,9 @@ Sensors::adc_poll()
 			}
 
 #if BOARD_NUMBER_BRICKS > 0
+
 #if __BATT_SERIAL__
 #else/*__BATT_SERIAL__*/	
-
 			if (_parameters.battery_source == 0) {
 
 				for (int b = 0; b < BOARD_NUMBER_BRICKS; b++) {

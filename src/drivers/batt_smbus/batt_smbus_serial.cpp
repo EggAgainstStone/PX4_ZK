@@ -101,6 +101,9 @@ private:
 	float 				_voltage_6;
 	float 				_voltage_7;
 	float 				_voltage_8;
+	float 				_crit_thr;
+	float				_low_thr;
+	float 				_emergency_thr;
 	uint16_t 			_charge_battery;
 	uint8_t 			_batt_type;
 	uint8_t 			_system_status;
@@ -168,6 +171,10 @@ BATT_SERIAL::BATT_SERIAL(const char *uart_path) :
 	_voltage_6(0),
 	_voltage_7(0),
 	_voltage_8(0),
+	_crit_thr(0),
+	_low_thr(0),
+	_emergency_thr(0),
+	_charge_battery(0),
 	_batt_type(0),
 	_system_status(0),
 	_cycle_count(0),
@@ -292,6 +299,20 @@ BATT_SERIAL::task_main()
 
 	fds[0].fd = _serial_fd;
 	fds[0].events = POLLIN;
+
+
+	if (_crit_thr < 0.01f) {
+		param_get(param_find("BAT_CRIT_THR"), &_crit_thr);
+	}
+
+	if (_low_thr < 0.01f) {
+		param_get(param_find("BAT_LOW_THR"), &_low_thr);
+	}
+
+	if (_emergency_thr < 0.01f) {
+		param_get(param_find("BAT_EMERGEN_THR"), &_emergency_thr);
+	}
+//	PX4_INFO("_crit_thr %.3f _low_thr %.3f _emergency_thr %.3f",(double)_crit_thr,(double)_low_thr,(double)_emergency_thr);
 
 	/* loop handling received serial bytes and also configuring in between */
 	while (!_task_should_exit) {
@@ -430,7 +451,7 @@ BATT_SERIAL::task_main()
 											_report_battery_status.voltage_filtered_v = _voltage;
 											_report_battery_status.current_a = _current;
 //											_report_battery_status.charge_battery = _charge_battery;
-											//PX4_INFO("power %.7f _charge_battery %d",(double)((_voltage*_current)/_power),_charge_battery);
+										
 //											PX4_INFO("_voltage--%.2f current %.2f _power %.2f _voltage_1-6 %.2f %.2f %.2f %.2f %.2f %.2f _power_type %d _error %d _dcm %d _resis_ud %d",
 											//	(double)_voltage,(double)_current,(double)((_voltage*_current)/_power),(double)_voltage_1,
 											//	(double)_voltage_2,(double)_voltage_3,(double)_voltage_4,(double)_voltage_5,
@@ -456,13 +477,36 @@ BATT_SERIAL::task_main()
 											_report_battery_status.dcm_status = _dcm;
 											_report_battery_status.res_status = _resis_ud;											
 
+											//this is to be prove correct;
+											_report_battery_status.connected = _voltage>1.0f;
+											_report_battery_status.system_source = 1;
+											_report_battery_status.priority=1;
+
+
+											if (_voltage_1 > _low_thr) {
+												_report_battery_status.warning = battery_status_s::BATTERY_WARNING_NONE;
+											
+											} else if (_voltage_1 > _crit_thr) {
+												_report_battery_status.warning = battery_status_s::BATTERY_WARNING_LOW;
+											
+											} else if (_voltage_1 > _emergency_thr) {
+												_report_battery_status.warning = battery_status_s::BATTERY_WARNING_CRITICAL;
+											
+											} else {
+												_report_battery_status.warning = battery_status_s::BATTERY_WARNING_EMERGENCY;
+											}
+
+											PX4_INFO("power %.7f _batt_type %d",(double)_power,_batt_type);
+
 				                            if(_report_battery_status_pub !=nullptr){
+											
 
 												//PX4FLOW_WARNX((nullptr,"_voltage--%.2f current %.2f _power %.2f _voltage_1-6 %.2f %.2f %.2f %.2f %.2f %.2f _power_type %d _error %d _dcm %d _resis_ud %d",
 											//	(double)_voltage,(double)_current,(double)((_voltage*_current)/_power),(double)_voltage_1,
 											//	(double)_voltage_2,(double)_voltage_3,(double)_voltage_4,(double)_voltage_5,
 											//	(double)_voltage_6,_power_type,_error,_dcm,_resis_ud));
 												orb_publish(ORB_ID(battery_status), _report_battery_status_pub, &_report_battery_status);
+												PX4_INFO("orb_publish(ORB_ID(battery_status)");
 
 											}else{
 												_report_battery_status_pub= orb_advertise(ORB_ID(battery_status), &_report_battery_status);
