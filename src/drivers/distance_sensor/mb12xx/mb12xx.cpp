@@ -73,6 +73,7 @@
 #include "qiaoliang/qiaoliang_define.h"
 
 /* Configuration Constants */
+#define MB12XX_BUS  				PX4_I2C_BUS_EXPANSION
 #define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
 #define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
 #define MB12XX_DEVICE_PATH	"/dev/mb12xx"
@@ -378,8 +379,8 @@ MB12XX::init()
 	}
 
 	/* show the connected sonars in terminal */
-	for (unsigned i = 0; i < addr_ind.size(); i++) {
-		DEVICE_LOG("sonar %d with address %d added", (i + 1), addr_ind[i]);
+	for (unsigned ki = 0; ki < addr_ind.size(); ki++) {
+		DEVICE_LOG("sonar %d with address %d added", (ki + 1), addr_ind[ki]);
 	}
 
 	DEVICE_DEBUG("Number of sonars connected: %lu", addr_ind.size());
@@ -387,7 +388,12 @@ MB12XX::init()
 	ret = OK;
 	/* sensor is ok, but we don't really know if it is within range */
 	_sensor_ok = true;
-
+	
+	uint8_t cmd[2] = {0,0};
+	int ok = transfer(&cmd[0],2,nullptr,0);
+	if(OK != ok)
+		printf("LSK : %d", ok);
+	
 	return ret;
 }
 
