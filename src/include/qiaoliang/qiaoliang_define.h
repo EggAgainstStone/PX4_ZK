@@ -20,7 +20,7 @@
 
 #endif/*__MAVLINK_LOG_FILE__*/
 
-#define  __DEBUG__								(0)//the major switch fo debug
+#define  __DEBUG__								(1)//the major switch fo debug
 #define __DAVID_ARMED_FIX__                     (1)//add armed status
 #define __FMU_CONFIG__  						(1)//to use the fmu to do the function of gpio
 #define __ATT_PROTECT_FIX__  					(1)//to fix the att bug

@@ -45,6 +45,7 @@
 #define SDLOG2_MESSAGES_H_
 
 #include "sdlog2_format.h"
+#include "qiaoliang/qiaoliang_define.h"
 
 /* define message formats */
 
@@ -303,6 +304,8 @@ struct log_BATT_s {
 	uint8_t res_status;
 	uint16_t charge_battery;
 	uint8_t warning;
+	float voltage_filtered;
+	float current_filtered;
 
 #else/*__BATT_SERIAL__*/
 	float voltage;
