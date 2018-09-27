@@ -953,7 +953,7 @@ PX4_WARN("distance_m %.3f",(double)distance_m);
 	report.max_distance = get_maximum_distance();
 	report.current_distance = distance_m;
 	report.covariance = 0.0f;
-PX4FLOW_WARNX((nullptr,"min_distance %.2f  max %.2f current_distanc %.2f",(double)report.min_distance,(double)report.max_distance,(double)distance_m))
+//PX4FLOW_WARNX((nullptr,"min_distance %.2f  max %.2f current_distanc %.2f",(double)report.min_distance,(double)report.max_distance,(double)distance_m))
 
 #else/*__DISTANCE_KS103__*/	
 	uint16_t distance_cm = val[0] << 8 | val[1];
