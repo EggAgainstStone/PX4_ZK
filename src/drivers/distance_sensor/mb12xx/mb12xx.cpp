@@ -73,12 +73,16 @@
 #include "qiaoliang/qiaoliang_define.h"
 
 /* Configuration Constants */
-#define MB12XX_BUS  				PX4_I2C_BUS_EXPANSION
+#define MB12XX_BUS  		PX4_I2C_BUS_EXPANSION
 #define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
 #define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
 #define MB12XX_DEVICE_PATH	"/dev/mb12xx"
 
 /* MB12xx Registers addresses */
+//	0xd2---0x69		uint8_t  SRO4[4]={0xd2,0xd3,0xd4,0xd6};
+//				    uint8_t  KS103[4]={0x74,0x68,0x69,0x6a};
+//
+//
 
 #define MB12XX_TAKE_RANGE_REG	0x51		/* Measure range Register */
 #define MB12XX_SET_ADDRESS_1	0xAA		/* Change address 1 Register */
@@ -88,13 +92,13 @@
 #define MB12XX_MIN_DISTANCE 	(0.20f)
 #define MB12XX_MAX_DISTANCE 	(2.5f)
 
-#define MB12XX_CONVERSION_INTERVAL 	100000 /* 60ms for one sonar */
+#define MB12XX_CONVERSION_INTERVAL 	    100000 /* 60ms for one sonar */
 #define TICKS_BETWEEN_SUCCESIVE_FIRES 	100000 /* 30ms between each sonar measurement (watch out for interference!) */
 
 #define SENSOR_POINT_FRONT  (0)
-#define SENSOR_POINT_BACK  (1)
-#define SENSOR_POINT_LEFT  (2)
-#define SENSOR_POINT_RIGHT  (3)
+#define SENSOR_POINT_BACK   (1)
+#define SENSOR_POINT_UP     (2)
+#define SENSOR_POINT_DOWN   (3)
 
 #if __DISTANCE_FILTER__
 #define F_N_D 3
@@ -121,15 +125,15 @@ static float filter_sonic_3 = 0;
 #if __DISTANCE_KS103__
 
 #define SENSOR_POINT_FRONT2  (4)
-#define SENSOR_POINT_BACK2 (5)
-#define SENSOR_POINT_LEFT2  (6)
+#define SENSOR_POINT_BACK2   (5)
+#define SENSOR_POINT_LEFT2   (6)
 #define SENSOR_POINT_RIGHT2  (7)
 
 
 static const uint8_t g_slave_addr[MB12XX_MAX_RANGEFINDERS] = {0x74,0x68,0x69,0x6a,0xd2,0xd3,0xd4,0xd6};
 static const uint8_t g_id_addr_map[MB12XX_MAX_RANGEFINDERS][MB12XX_MAX_RANGEFINDERS] =
 {
-    {SENSOR_POINT_FRONT,0x74},{SENSOR_POINT_BACK,0x68},{SENSOR_POINT_LEFT,0x69},{SENSOR_POINT_RIGHT,0x6a},
+    {SENSOR_POINT_FRONT,0x74},{SENSOR_POINT_BACK,0x68},{SENSOR_POINT_UP,0x69},{SENSOR_POINT_DOWN,0x6a},
      {SENSOR_POINT_FRONT2,0xd2},{SENSOR_POINT_BACK2,0xd3},{SENSOR_POINT_LEFT2,0xd4},{SENSOR_POINT_RIGHT2,0xd6}
 
 };
@@ -317,6 +321,15 @@ MB12XX::init()
 		return ret;
 	}
 
+	////////////////////////////////////////////////////////
+//          change address is ok!!
+//          uint8_t newaddr =0xd2;
+//			ret =change_address(newaddr);
+//			PX4_ZK("change adress is ret %d",ret ;
+//			return ret;
+	///////////////////////////////////////////////////////
+
+
 	/* allocate basic report buffers */
 	_reports = new ringbuffer::RingBuffer(2, sizeof(distance_sensor_s));
 
@@ -342,6 +355,7 @@ MB12XX::init()
 	// XXX we should find out why we need to wait 200 ms here
 	usleep(200000);
 
+
 	/* check for connected rangefinders on each i2c port:
 	   We start from i2c base address (0x70 = 112) and count downwards
 	   So second iteration it uses i2c address 111, third iteration 110 and so on*/
@@ -365,8 +379,6 @@ MB12XX::init()
 			_latest_sonar_measurements.push_back(200);
 		}
 	}
-	PX4_ERR("MB12XX::---11----init()");
-
 	_index_counter = MB12XX_BASEADDR;
 	set_device_address(_index_counter); /* set i2c port back to base adress for rest of driver */
 
@@ -388,12 +400,15 @@ MB12XX::init()
 	ret = OK;
 	/* sensor is ok, but we don't really know if it is within range */
 	_sensor_ok = true;
+
+
 	
-	uint8_t cmd[2] = {0,0};
+	uint8_t cmd[2] = {2,0xbc};
 	int ok = transfer(&cmd[0],2,nullptr,0);
 	if(OK != ok)
 		printf("LSK : %d", ok);
-	
+
+
 	return ret;
 }
 
@@ -587,6 +602,7 @@ MB12XX::read(device::file_t *filp, char *buffer, size_t buflen)
 			ret = -EIO;
 			break;
 		}
+
 
 		/* wait for it to complete */
 		usleep(_cycling_rate * 2);
@@ -871,7 +887,7 @@ MB12XX::collect()
 		report.id = getIdByAddr(addr_ind[_cycle_counter]);
 		float distance_m = float(distance_mm)*1e-3f;
 
-PX4_WARN("distance_m %.3f",(double)distance_m);
+//PX4_WARN("distance_m %.3f",(double)distance_m);
 
 #if __DISTANCE_FILTER__		
 		if(report.id==0||report.id==4){
@@ -955,6 +971,8 @@ PX4_WARN("distance_m %.3f",(double)distance_m);
 	report.covariance = 0.0f;
 
 #else/*__DISTANCE_KS103__*/	
+	uint8_t val[2] = {0, 0};
+
 	uint16_t distance_cm = val[0] << 8 | val[1];
 	float distance_m = float(distance_cm) * 1e-2f;
 
@@ -1272,6 +1290,7 @@ mb12xx_main(int argc, char *argv[])
 {
 	int ch;
 	int myoptind = 1;
+
 	const char *myoptarg = nullptr;
 	uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
 

@@ -70,3 +70,6 @@ bool mission_failure				# Set to true if mission could not continue/finish
 uint32 onboard_control_sensors_present
 uint32 onboard_control_sensors_enabled
 uint32 onboard_control_sensors_health
+#######################################
+bool distance_sensor_ok
+bool distance_pressure_ok

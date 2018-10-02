@@ -23,7 +23,9 @@ then
 	# Unfortunately we do not build it on px4fmu-v2 due to a limited flash.
 	if attitude_estimator_q start
 	then
-		local_position_estimator start
+		local_position_estimator start &
+#		position_estimator_inav start &
+
 	else
 		echo "ERROR [init] Estimator LPE not available. Using EKF2"
 		param set SYS_MC_EST_GROUP 2

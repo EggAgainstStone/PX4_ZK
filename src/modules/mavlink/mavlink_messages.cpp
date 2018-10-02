@@ -579,11 +579,6 @@ protected:
 			msg.errors_count4 = 0;
 
 			mavlink_msg_sys_status_send_struct(_mavlink->get_channel(), &msg);
-			PX4_INFO("_mavlink->get_channel() %d",_mavlink->get_channel());
-
-
-
-
 			/* battery status message with higher resolution */
 			mavlink_battery_status_t bat_msg = {};
 			bat_msg.id = 0;
@@ -591,8 +586,7 @@ protected:
 #if __BATT_SERIAL__
 			bat_msg.type = battery_status.system_status;
 			bat_msg.current_consumed =battery_status.current_a*battery_status.voltage_v;
-
-			PX4_INFO("mavlink bat_msg.current_consumed %.7f msg power %d ",(double)bat_msg.current_consumed,bat_msg.type);		
+//			PX4_ZK("mavlink bat_msg.current_consumed %.7f msg power %d ",(double)bat_msg.current_consumed,bat_msg.type);		
 #else
 			bat_msg.type = MAV_BATTERY_TYPE_LIPO;
 			bat_msg.current_consumed = (battery_status.connected) ? battery_status.discharged_mah : -1;
@@ -3586,7 +3580,8 @@ protected:
 			msg.max_distance = dist_sensor.max_distance * 100.0f; /* m to cm */
 			msg.current_distance = dist_sensor.current_distance * 100.0f; /* m to cm */
 			msg.covariance = dist_sensor.covariance;
-
+			msg.id = dist_sensor.id;
+//PX4_ZK("msg.current_distance %d  dist_sensor.id %d",msg.current_distance,dist_sensor.id);
 			mavlink_msg_distance_sensor_send_struct(_mavlink->get_channel(), &msg);
 
 			return true;

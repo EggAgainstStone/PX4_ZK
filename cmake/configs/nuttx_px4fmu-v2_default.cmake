@@ -28,7 +28,6 @@ set(config_module_list
 	drivers/imu/lsm303d
 	drivers/magnetometer/hmc5883
 	drivers/magnetometer/lis3mdl
-	#drivers/mb12xx
 	#drivers/mkblctrl
 	drivers/imu/mpu6000
 	drivers/imu/mpu9250
@@ -111,11 +110,11 @@ set(config_module_list
 	#
 	# Estimation modules
 	#
-	#modules/attitude_estimator_q
-	modules/ekf2
-	#modules/local_position_estimator
-	#modules/position_estimator_inav
-	#modules/landing_target_estimator
+	modules/attitude_estimator_q
+#	modules/ekf2
+	modules/local_position_estimator
+	modules/position_estimator_inav
+	modules/landing_target_estimator
 	#modules/wind_estimator
 
 	#
@@ -133,7 +132,7 @@ set(config_module_list
 	# Logging
 	#
 	modules/logger
-	#modules/sdlog2
+	modules/sdlog2
 
 	#
 	# Library modules

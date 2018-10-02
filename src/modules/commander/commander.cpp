@@ -111,6 +111,11 @@
 #include <uORB/uORB.h>
 #include "qiaoliang/qiaoliang_define.h"
 
+#if __DAVID_DISTANCE__
+#include <uORB/topics/distance_sensor.h>
+#endif/*__DAVID_DISTANCE__*/
+
+
 typedef enum VEHICLE_MODE_FLAG
 {
 	VEHICLE_MODE_FLAG_CUSTOM_MODE_ENABLED=1, /* 0b00000001 Reserved for future use. | */
@@ -187,6 +192,11 @@ static struct vehicle_land_detected_s land_detector = {};
 
 static float _eph_threshold_adj = INFINITY;	///< maximum allowable horizontal position uncertainty after adjustment for flight condition
 static bool _skip_pos_accuracy_check = false;
+#if __DAVID_DISTANCE__
+static bool sonic_state = false;
+//static bool alarm_sonic = false;
+
+#endif
 
 /**
  * The daemon app only briefly exists to start
@@ -1195,6 +1205,12 @@ Commander::run()
 	param_t _param_arm_mission_required = param_find("COM_ARM_MIS_REQ");
 	param_t _param_flight_uuid = param_find("COM_FLIGHT_UUID");
 	param_t _param_takeoff_finished_action = param_find("COM_TAKEOFF_ACT");
+#if __DAVID_DISTANCE__
+	param_t _param_sensor_id= param_find("SENSOR_ID_USE");
+#endif/*__DAVID_DISTANCE__*/
+#if __DAVID_DISTANCE_FIX__
+	param_t _param_sonar_switch= param_find("SONAR_SWITCH");
+#endif/*__DAVID_DISTANCE_FIX__*/
 
 	param_t _param_fmode_1 = param_find("COM_FLTMODE1");
 	param_t _param_fmode_2 = param_find("COM_FLTMODE2");
@@ -1202,6 +1218,14 @@ Commander::run()
 	param_t _param_fmode_4 = param_find("COM_FLTMODE4");
 	param_t _param_fmode_5 = param_find("COM_FLTMODE5");
 	param_t _param_fmode_6 = param_find("COM_FLTMODE6");
+	
+#if __DAVID_CHAO_WARING__
+		param_t _param_sonar_id_f= param_find("SONAR_ID_F");
+		param_t _param_sonar_id_b= param_find("SONAR_ID_B");
+		param_t _param_sonar_id_d= param_find("SONAR_ID_D");
+		param_t _param_warn_dis = param_find("WARN_DIS");
+		param_t _param_count_warn = param_find("COUNT_WARN");
+#endif/*__DAVID_CHAO_WARING__*/
 
 	/* failsafe response to loss of navigation accuracy */
 	param_t _param_posctl_nav_loss_act = param_find("COM_POSCTL_NAVL");
@@ -1273,6 +1297,9 @@ Commander::run()
 	status_flags.condition_local_position_valid = false;
 	status_flags.condition_local_velocity_valid = false;
 	status_flags.condition_local_altitude_valid = false;
+#if __DAVID_DISTANCE__
+	status.distance_sensor_ok = false;
+#endif/*__DAVID_DISTANCE__*/
 
 	/* publish initial state */
 	status_pub = orb_advertise(ORB_ID(vehicle_status), &status);
@@ -1356,6 +1383,12 @@ Commander::run()
 	int subsys_sub = orb_subscribe(ORB_ID(subsystem_info));
 	struct subsystem_info_s info;
 	memset(&info, 0, sizeof(info));
+
+#if __DAVID_DISTANCE__
+	int distance_sensor_sub = orb_subscribe(ORB_ID(distance_sensor));
+	struct distance_sensor_s  distance_sensor_rece;
+	memset(&distance_sensor_rece, 0, sizeof(distance_sensor_rece));
+#endif/*__DAVID_DISTANCE__*/
 
 	/* Subscribe to system power */
 	int system_power_sub = orb_subscribe(ORB_ID(system_power));
@@ -1452,6 +1485,20 @@ Commander::run()
 
 	int32_t disarm_when_landed = 0;
 	int32_t low_bat_action = 0;
+#if __DAVID_DISTANCE__
+	int32_t sensor_id;
+#endif/*__DAVID_DISTANCE__*/
+#if __DAVID_DISTANCE_FIX__
+	float sonar_switch;
+#endif/*__DAVID_DISTANCE_FIX__*/
+#if __DAVID_CHAO_WARING__
+	int32_t sonar_id_f;
+	int32_t sonar_id_b;
+	int32_t sonar_id_d;
+	float warn_dis;
+	int32_t count_warn;
+#endif/*__DAVID_CHAO_WARING__*/
+
 
 	/* check which state machines for changes, clear "changed" flag */
 	bool main_state_changed = false;
@@ -1551,6 +1598,19 @@ Commander::run()
 			param_get(_param_geofence_action, &geofence_action);
 			param_get(_param_disarm_land, &disarm_when_landed);
 			param_get(_param_flight_uuid, &flight_uuid);
+#if __DAVID_DISTANCE__
+			param_get(_param_sensor_id, &sensor_id);
+#endif/*__DAVID_DISTANCE__*/
+#if __DAVID_DISTANCE_FIX__
+			param_get(_param_sonar_switch, &sonar_switch);
+#endif/*__DAVID_DISTANCE_FIX__*/
+#if __DAVID_CHAO_WARING__
+			param_get(_param_sonar_id_f, &sonar_id_f);
+			param_get(_param_sonar_id_b, &sonar_id_b);
+			param_get(_param_sonar_id_d, &sonar_id_d);
+			param_get(_param_warn_dis, &warn_dis);
+			param_get(_param_count_warn, &count_warn);
+#endif/*__DAVID_CHAO_WARING__*/
 
 			// If we update parameters the first time
 			// make sure the hysteresis time gets set.
@@ -2082,6 +2142,30 @@ Commander::run()
 				}
 			}
 		}
+#if __DAVID_DISTANCE__
+				if(armed.armed){//after the plane disarmed,to do warning function;
+				//if(1){
+					orb_check(distance_sensor_sub, &updated);
+					if(updated){
+						orb_copy(ORB_ID(distance_sensor), distance_sensor_sub, &distance_sensor_rece);
+						
+					if(distance_sensor_rece.id == sensor_id){//the hold height sonar id, if the sonar distance is between max and min, to work;
+						if((distance_sensor_rece.current_distance< sonar_switch) &&(distance_sensor_rece.current_distance>-0.1f))
+						{
+							status.distance_sensor_ok = true;
+						
+						}else{
+							status.distance_sensor_ok = false;
+						}
+
+						}
+					}
+				}else{
+					status.distance_sensor_ok = false;
+					status.distance_pressure_ok = false;
+				}
+			
+#endif/*__DAVID_DISTANCE__*/
 
 		/* start geofence result check */
 		orb_check(geofence_result_sub, &updated);
@@ -3434,6 +3518,19 @@ set_control_mode()
 
 	switch (status.nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
+#if __DAVID_STATE_FIX__
+		control_mode.flag_control_manual_enabled = true;
+		control_mode.flag_control_auto_enabled = false;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_rattitude_enabled = false;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = false;
+		control_mode.flag_control_position_enabled = false;
+		control_mode.flag_control_velocity_enabled = false;
+		control_mode.flag_control_acceleration_enabled = false;
+		control_mode.flag_control_termination_enabled = false;
+#else/*__DAVID_STATE_FIX__*/
 		control_mode.flag_control_manual_enabled = true;
 		control_mode.flag_control_auto_enabled = false;
 		control_mode.flag_control_rates_enabled = stabilization_required();
@@ -3445,6 +3542,15 @@ set_control_mode()
 		control_mode.flag_control_velocity_enabled = false;
 		control_mode.flag_control_acceleration_enabled = false;
 		control_mode.flag_control_termination_enabled = false;
+#endif/*__DAVID_STATE_FIX__*/		
+#if __DAVID_DISTANCE__
+		if(sonic_state&&status.distance_sensor_ok){
+			control_mode.flag_sonic_sensor				= true;
+		}else{
+			control_mode.flag_sonic_sensor				= false;
+		}
+#endif/*__DAVID_DISTANCE__*/
+		
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_STAB:
@@ -3501,6 +3607,13 @@ set_control_mode()
 		control_mode.flag_control_velocity_enabled = !status.in_transition_mode;
 		control_mode.flag_control_acceleration_enabled = false;
 		control_mode.flag_control_termination_enabled = false;
+#if __DAVID_DISTANCE__
+		if(sonic_state&&status.distance_sensor_ok){
+			control_mode.flag_sonic_sensor				= true;
+		}else{
+			control_mode.flag_sonic_sensor				= false;
+		}
+#endif/*__DAVID_DISTANCE__*/		
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTL:
@@ -3528,6 +3641,14 @@ set_control_mode()
 		control_mode.flag_control_velocity_enabled = !status.in_transition_mode;
 		control_mode.flag_control_acceleration_enabled = false;
 		control_mode.flag_control_termination_enabled = false;
+#if __DAVID_DISTANCE__
+		if(sonic_state&&status.distance_sensor_ok){
+			control_mode.flag_sonic_sensor				= true;
+		}else{
+			control_mode.flag_sonic_sensor				= false;
+		}
+#endif/*__DAVID_DISTANCE__*/
+		
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:

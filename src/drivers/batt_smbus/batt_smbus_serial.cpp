@@ -506,7 +506,6 @@ BATT_SERIAL::task_main()
 											//	(double)_voltage_2,(double)_voltage_3,(double)_voltage_4,(double)_voltage_5,
 											//	(double)_voltage_6,_power_type,_error,_dcm,_resis_ud));
 												orb_publish(ORB_ID(battery_status), _report_battery_status_pub, &_report_battery_status);
-												PX4_INFO("orb_publish(ORB_ID(battery_status)");
 
 											}else{
 												_report_battery_status_pub= orb_advertise(ORB_ID(battery_status), &_report_battery_status);

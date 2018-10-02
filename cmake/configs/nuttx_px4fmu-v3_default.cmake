@@ -15,7 +15,7 @@ set(config_module_list
 	#
 	drivers/barometer
 	drivers/differential_pressure
-	drivers/distance_sensor
+#	drivers/distance_sensor
 	drivers/magnetometer
 	drivers/telemetry
 
@@ -131,17 +131,17 @@ set(config_module_list
 	#
 	# OBC challenge
 	#
-	examples/bottle_drop
+#	examples/bottle_drop
 
 	#
 	# Rover apps
 	#
-	examples/rover_steering_control
+#	examples/rover_steering_control
 
 	#
 	# Segway
 	#
-	examples/segway
+#	examples/segway
 
 	#
 	# Demo apps
@@ -149,16 +149,16 @@ set(config_module_list
 
 	# Tutorial code from
 	# https://px4.io/dev/px4_simple_app
-	examples/px4_simple_app
+#	examples/px4_simple_app
 
 	# Tutorial code from
 	# https://px4.io/dev/debug_values
-	examples/px4_mavlink_debug
+#	examples/px4_mavlink_debug
 
 	# Tutorial code from
 	# https://px4.io/dev/example_fixedwing_control
-	examples/fixedwing_control
+#	examples/fixedwing_control
 
 	# Hardware test
-	examples/hwtest
+#	examples/hwtest
 )

@@ -5,6 +5,7 @@
 #include <systemlib/err.h>
 #include <matrix/math.hpp>
 #include <cstdlib>
+#include "qiaoliang/qiaoliang_define.h"
 
 orb_advert_t mavlink_log_pub = nullptr;
 

@@ -407,6 +407,30 @@ PARAM_DEFINE_FLOAT(MPC_VELD_LP, 5.0f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(MPC_ACC_HOR_MAX, 10.0f);
+#if __DAVID_DISTANCE__
+/**
+ * Maximum sensor distance
+ *
+ * @unit m/s/s
+ * @min 0.0
+ * @max 15.0
+ * @decimal 2
+ * @group ZHIKUN
+ */
+PARAM_DEFINE_FLOAT(MPC_SENSOR_LIMIT, 0.1f);
+
+/**
+ * to select the sensor id of ultrasonic
+ *
+ * the sensor id to use
+ *
+ * @group ZHIKUN
+ * @min -255
+ * @max 255
+ */
+PARAM_DEFINE_INT32(SENSOR_ID_USE, -1);
+#endif/*__DAVID_DISTANCE__*/
+
 
 /**
  * Acceleration for auto and for manual

@@ -34,8 +34,8 @@
 px4_add_module(
 	MODULE modules__position_estimator_inav
 	MAIN position_estimator_inav
-	STACK_MAIN 1200
-	STACK_MAX 4000
+	STACK_MAIN 5500
+	STACK_MAX 6000
 	COMPILE_FLAGS
 	SRCS
 		position_estimator_inav_main.cpp

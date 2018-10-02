@@ -33,8 +33,8 @@
 px4_add_module(
 	MODULE modules__commander
 	MAIN commander
-	STACK_MAIN 4096
-	STACK_MAX 2450
+	STACK_MAIN 4896
+	STACK_MAX 3050
 	COMPILE_FLAGS
 		-Wno-sign-compare # TODO: fix all sign-compare
 	SRCS

@@ -150,6 +150,10 @@ private:
 	int		_local_pos_sub;			/**< vehicle local position */
 	int		_pos_sp_triplet_sub;		/**< position setpoint triplet */
 	int		_home_pos_sub; 			/**< home position */
+#if __DAVID_DISTANCE__
+	float	_init_dis;
+	bool	_init_judge;
+#endif/*__DAVID_DISTANCE__*/
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -226,6 +230,10 @@ private:
 		(ParamFloat<px4::params::MC_YAW_P>) _mc_att_yaw_p,
 		(ParamFloat<px4::params::MPC_HOLD_MAX_XY>) _hold_max_xy,
 		(ParamFloat<px4::params::MPC_HOLD_MAX_Z>) _hold_max_z,
+#if __DAVID_DISTANCE__
+		(ParamFloat<px4::params::MPC_SENSOR_LIMIT>) sensor_limit,
+		(ParamFloat<px4::params::SENSOR_ID_USE>) sensor_id,
+#endif/*__DAVID_DISTANCE__*/		
 		(ParamInt<px4::params::MPC_ALT_MODE>) _alt_mode,
 		(ParamFloat<px4::params::RC_FLT_CUTOFF>) _rc_flt_cutoff,
 		(ParamFloat<px4::params::RC_FLT_SMP_RATE>) _rc_flt_smp_rate,
@@ -442,6 +450,10 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_local_pos_sub(-1),
 	_pos_sp_triplet_sub(-1),
 	_home_pos_sub(-1),
+#if __DAVID_DISTANCE__
+	_init_dis(0),
+	_init_judge(false),
+#endif/*__DAVID_DISTANCE__*/
 
 	/* publications */
 	_att_sp_pub(nullptr),
@@ -2380,7 +2392,21 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 	}
 
 	if (_run_alt_control) {
+
 		if (PX4_ISFINITE(_pos_sp(2))) {
+
+#if __DAVID_DISTANCE__
+			if(_init_judge == false && _local_pos.distace_sensor_ok && (sensor_id.get() !=-1)){
+				_pos_sp(2) = _pos(2);
+				_init_judge = true;
+				//PX4FLOW_WARNX((nullptr,"sonic ok"));
+			}
+			if(!_local_pos.distace_sensor_ok&&_init_judge == true && (sensor_id.get() !=-1)){
+				_pos_sp(2)= _pos(2);
+				_init_judge = false;
+			}
+#endif/*__DAVID_DISTANCE__*/
+			
 			_vel_sp(2) = (_pos_sp(2) - _pos(2)) * _pos_p(2);
 
 		} else {
@@ -2502,6 +2528,13 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 
 	/* velocity error */
 	matrix::Vector3f vel_err = _vel_sp - _vel;
+
+#if __DAVID_DISTANCE__
+	if(_local_pos.distace_sensor_ok&&_pos(2)<sensor_limit.get() && (sensor_id.get() !=-1))
+	{
+		vel_err(2)=0;
+	}
+#endif/*__DAVID_DISTANCE__*/
 
 	/* thrust vector in NED frame */
 	matrix::Vector3f thrust_sp;
