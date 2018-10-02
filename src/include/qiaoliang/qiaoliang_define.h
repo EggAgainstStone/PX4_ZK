@@ -10,17 +10,7 @@
 //#undef	__DEBUG__	
 //#endif/*CONFIG_DEBUG*/
 
-#if __MAVLINK_LOG_FILE__
-#define xia_debug(_fd, _text, ...)			mavlink_vasprintf(_fd, MAVLINK_IOC_SEND_TEXT_INFO, _text, ##__VA_ARGS__)	\
-											fprintf(stderr, _text, ##__VA_ARGS__);										\
-											fprintf(stderr, "\n");
-#else	
-#define xia_debug(_fd, _text, ...)			fprintf(stderr, _text, ##__VA_ARGS__);	\
-											fprintf(stderr, "\n");
-
-#endif/*__MAVLINK_LOG_FILE__*/
-
-#define __DEBUG__                               (0)
+#define __DEBUG__                               (1)
 #define __DAVID_ARMED_FIX__                     (1)//add armed status
 #define __FMU_CONFIG__  						(1)//to use the fmu to do the function of gpio
 #define __ATT_PROTECT_FIX__  					(1)//to fix the att bug
@@ -28,13 +18,13 @@
 #define __DAVID_STATE_FIX__                     (1)
 
 
-#define __DISTANCE_KS103__ 				    	(0)//to change mb12xx to ks103
-#define __DISTANCE_FILTER__ 					(0)//to filter the up-ultrasonic data
+#define __DISTANCE_KS103__ 				    	(1)//to change mb12xx to ks103
+#define __DISTANCE_FILTER__ 					(1)//to filter the up-ultrasonic data
 
 
-#define __DAVID_YAW_FIX__  						(0)//to fix the yaw bug
-#define __ARMED_FIX_1__  						(0)//to lock the stick value when disarming plane
-#define __DAVID_NAV_LOG__  						(0)//to add nav log
+#define __DAVID_YAW_FIX__  						(1)//to fix the yaw bug
+#define __ARMED_FIX_1__  						(1)//to lock the stick value when disarming plane
+#define __DAVID_NAV_LOG__  						(1)//to add nav log
 
 #define __DAVID_DISTANCE__                      (0)//chaoshengbo control height
 #define __DAVID_DISTANCE_FIX__                  (0)//chaoshengbo control height

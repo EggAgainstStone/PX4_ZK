@@ -3,6 +3,8 @@
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
 
+#include "qiaoliang/qiaoliang_define.h"
+
 bool FlightTasks::update()
 {
 	_updateCommand();

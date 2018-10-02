@@ -50,6 +50,7 @@
 #include "commander_helper.h"
 #include "PreflightCheck.h"
 #include "arm_auth.h"
+#include "qiaoliang/qiaoliang_define.h"
 
 static constexpr const char reason_no_rc[] = "no RC";
 static constexpr const char reason_no_offboard[] = "no offboard";
