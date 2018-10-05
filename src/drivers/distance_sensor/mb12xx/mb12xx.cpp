@@ -90,15 +90,11 @@
 
 /* Device limits */
 #define MB12XX_MIN_DISTANCE 	(0.20f)
-#define MB12XX_MAX_DISTANCE 	(2.5f)
+#define MB12XX_MAX_DISTANCE 	(4.5f)
 
 #define MB12XX_CONVERSION_INTERVAL 	    100000 /* 60ms for one sonar */
-#define TICKS_BETWEEN_SUCCESIVE_FIRES 	100000 /* 30ms between each sonar measurement (watch out for interference!) */
+#define TICKS_BETWEEN_SUCCESIVE_FIRES 	40000 /* 30ms between each sonar measurement (watch out for interference!) */
 
-#define SENSOR_POINT_FRONT  (0)
-#define SENSOR_POINT_BACK   (1)
-#define SENSOR_POINT_UP     (2)
-#define SENSOR_POINT_DOWN   (3)
 
 #if __DISTANCE_FILTER__
 #define F_N_D 3
@@ -123,6 +119,11 @@ static float filter_sonic_3 = 0;
 #endif/*__DISTANCE_FILTER__*/
 
 #if __DISTANCE_KS103__
+
+#define SENSOR_POINT_FRONT  (0)
+#define SENSOR_POINT_BACK   (1)
+#define SENSOR_POINT_UP     (2)
+#define SENSOR_POINT_DOWN   (3)
 
 #define SENSOR_POINT_FRONT2  (4)
 #define SENSOR_POINT_BACK2   (5)
@@ -170,6 +171,10 @@ private:
 	uint8_t _rotation;
 	float				_min_distance;
 	float				_max_distance;
+#if __DISTANCE_KS103__	
+	uint8_t             _sonar_id;
+	float               _curent_distance;
+#endif/*__DISTANCE_KS103__*/	
 	work_s				_work;
 	ringbuffer::RingBuffer	*_reports;
 	bool				_sensor_ok;
@@ -261,6 +266,10 @@ MB12XX::MB12XX(uint8_t rotation, int bus, int address) :
 	_rotation(rotation),
 	_min_distance(MB12XX_MIN_DISTANCE),
 	_max_distance(MB12XX_MAX_DISTANCE),
+#if __DISTANCE_KS103__	
+	_sonar_id(0),
+	_curent_distance(0),
+#endif/*__DISTANCE_KS103__*/	
 	_reports(nullptr),
 	_sensor_ok(false),
 	_measure_ticks(0),
@@ -322,10 +331,10 @@ MB12XX::init()
 	}
 
 	////////////////////////////////////////////////////////
-//          change address is ok!!
-//          uint8_t newaddr =0xd2;
+//    //      change address is ok!!
+//            uint8_t newaddr =0xd2;
 //			ret =change_address(newaddr);
-//			PX4_ZK("change adress is ret %d",ret ;
+//			PX4_ZK("change adress is ret %d",ret) ;
 //			return ret;
 	///////////////////////////////////////////////////////
 
@@ -355,7 +364,6 @@ MB12XX::init()
 	// XXX we should find out why we need to wait 200 ms here
 	usleep(200000);
 
-
 	/* check for connected rangefinders on each i2c port:
 	   We start from i2c base address (0x70 = 112) and count downwards
 	   So second iteration it uses i2c address 111, third iteration 110 and so on*/
@@ -368,8 +376,11 @@ MB12XX::init()
 
 		set_device_address(_index_counter);			/* set I2c port to temp sonar i2c adress */
 
+//		PX4_ZK("MB12XX -----sonar close_scl_low  _index_counter %d",_index_counter);
+
 #if __DISTANCE_KS103__
 		int ret2 = close_scl_low();
+
 #else/*__DISTANCE_KS103__*/
 		int ret2 = measure();
 #endif/*__DISTANCE_KS103__*/
@@ -685,23 +696,24 @@ MB12XX::close_scl_low()
 	uint8_t  KS103[4]={0x74,0x68,0x69,0x6a};
 	if(_index_counter==SRO4[0]||_index_counter==SRO4[1]||_index_counter==SRO4[2]||_index_counter==SRO4[3])
 		{
-		csb=zhikun;
+			csb=zhikun;
 		}
 	if(_index_counter==KS103[0]||_index_counter==KS103[1]||_index_counter==KS103[2]||_index_counter==KS103[3])
 		{
-		csb=ks103;
+			csb=ks103;
 		}
-	if(csb==zhikun){
+//	if(csb==zhikun){
 
-        uint8_t  cmt=0x05;
-        ret = transfer(&cmt, 1, nullptr, 0);
-         if (OK != ret) {
-             perf_count(_comms_errors);
-             DEVICE_DEBUG("i2c::transfer returned %d", ret);
-             return ret;
-            }
-        }
-	/*if(csb==ks103){
+//        uint8_t  cmt=0x05;
+//        ret = transfer(&cmt, 1, nullptr, 0);
+//         if (OK != ret) {
+//             perf_count(_comms_errors);
+//             DEVICE_DEBUG("i2c::transfer returned %d", ret);
+//			 PX4_ZK("-aa-i2c::transfer returned %d", ret);
+//             return ret;
+//            }
+//        }
+	if(csb==ks103){
         uint8_t cmd[2] = {0x02,0xb4};
         ret = transfer(&cmd[0], 2, nullptr, 0);
         if (OK != ret) {
@@ -709,25 +721,23 @@ MB12XX::close_scl_low()
             DEVICE_DEBUG("i2c::transfer returned %d", ret);
             return ret;
             }
-        }*/
+        }
     
 	  //uint8_t cmd[2] = {2,0x75};
 	
 	//	ret = transfer(&cmd[0], 2,nullptr, 0);
-	PX4_DEBUG("-----sonar close_scl_low  ----");
 
 
     uint8_t cmd[2] = {2,0xc3};
 
     ret = transfer(&cmd[0], 2,nullptr, 0);
+
 	
     if (OK != ret) {
         perf_count(_comms_errors);
         DEVICE_DEBUG("i2c::transfer returned %d", ret);
         return ret;
     }
-
-
 
     ret = OK;
     return ret;
@@ -883,18 +893,16 @@ MB12XX::collect()
         distance_mm=val*10;
 }
 #endif
-		struct distance_sensor_s report;
-		report.id = getIdByAddr(addr_ind[_cycle_counter]);
-		float distance_m = float(distance_mm)*1e-3f;
 
-//PX4_WARN("distance_m %.3f",(double)distance_m);
+	float distance_m = float(distance_mm)*1e-3f;
+	_sonar_id = getIdByAddr(addr_ind[_cycle_counter]);
 
 #if __DISTANCE_FILTER__		
-		if(report.id==0||report.id==4){
+		if(_sonar_id== SENSOR_POINT_FRONT){
 			filter_sonic_0 = _filter(distance_m,value_buf_0);
 			if(fabsf(distance_m-filter_sonic_0)>DELTA_DISTANCE){
 				count_0++;
-				report.current_distance =value_buf_0[0];
+				_curent_distance =value_buf_0[0];
 				if(count_0>MAX_OUT){
 					for(int i=0;i<F_N_D;i++){
 						value_buf_0[i]=distance_m;
@@ -904,14 +912,14 @@ MB12XX::collect()
 			
 			}else{
 				count_0 = 0;
-				report.current_distance=distance_m;
+				_curent_distance=distance_m;
 			}
 		}
-		if(report.id==1||report.id==5){
+		if(_sonar_id==SENSOR_POINT_BACK){
 			filter_sonic_1 = _filter(distance_m,value_buf_1);
 			if(fabsf(distance_m-filter_sonic_1)>DELTA_DISTANCE){
 				count_1++;
-				report.current_distance =value_buf_1[0];
+				_curent_distance =value_buf_1[0];
 				if(count_1>MAX_OUT){
 					for(int i=0;i<F_N_D;i++){
 						value_buf_1[i]=distance_m;
@@ -921,16 +929,16 @@ MB12XX::collect()
 			
 			}else{
 				count_1 = 0;
-				report.current_distance=distance_m;
+				_curent_distance=distance_m;
 			}
 		}
 		
-		if(report.id==2||report.id==6){
+		if(_sonar_id==SENSOR_POINT_UP){
 			
 			/*filter_sonic_2 = _filter(distance_m,value_buf_2);
 			if(fabsf(distance_m-filter_sonic_2)>fabsf(DELTA_DISTANCE_UP)){
 				count_2++;
-				report.current_distance =value_buf_2[0];
+				_curent_distance =value_buf_2[0];
 				if(count_2>MAX_OUT){
 					for(int i=0;i<F_N_D;i++){
 						value_buf_2[i]=distance_m;
@@ -940,15 +948,15 @@ MB12XX::collect()
 			
 			}else{*/
 	//			count_2 = 0;
-				report.current_distance=distance_m;
+				_curent_distance=distance_m;
 			//}
 		}
 	
-		if(report.id==3||report.id==7){
+		if(_sonar_id==SENSOR_POINT_DOWN){
 			filter_sonic_3 = _filter(distance_m,value_buf_3);
 			if(fabsf(distance_m-filter_sonic_3)>DELTA_DISTANCE){
 				count_3++;
-				report.current_distance =value_buf_3[0];
+				_curent_distance =value_buf_3[0];
 				if(count_3>MAX_OUT){
 					for(int i=0;i<F_N_D;i++){
 						value_buf_3[i]=distance_m;
@@ -958,17 +966,54 @@ MB12XX::collect()
 			
 			}else{
 				count_3 = 0;
-				report.current_distance=distance_m;
+				_curent_distance=distance_m;
 			}
 		}
 #endif/*__DISTANCE_FILTER__*/	
+
+
+	struct distance_sensor_s report;
 	report.timestamp = hrt_absolute_time();
-	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
-	report.orientation = 8;
 	report.min_distance = get_minimum_distance();
 	report.max_distance = get_maximum_distance();
-	report.current_distance = distance_m;
+	report.current_distance = _curent_distance;
 	report.covariance = 0.0f;
+	report.id = _sonar_id;
+	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
+//	PX4_ZK("_sonar_id %d",_sonar_id);
+
+	switch(_sonar_id){
+		case 0:
+			//PX4_ZK("ROTATION_FORWARD_FACING");
+			report.orientation =  distance_sensor_s::ROTATION_FORWARD_FACING;
+			break;
+		case 1:
+			//PX4_ZK("ROTATION_BACKWARD_FACING");
+			report.orientation =  distance_sensor_s::ROTATION_BACKWARD_FACING;
+			break;
+		case 2:
+			//PX4_ZK("ROTATION_UPWARD_FACING");
+			report.orientation =  distance_sensor_s::ROTATION_UPWARD_FACING;
+			break;
+		case 3:
+		//	PX4_ZK("ROTATION_DOWNWARD_FACING");
+			report.orientation =  distance_sensor_s::ROTATION_DOWNWARD_FACING;
+			break;
+		default:
+			break;
+		//	report.orientation =  distance_sensor_s::ROTATION_UPWARD_FACING;
+	}
+//#define SENSOR_POINT_FRONT  (0)
+//#define SENSOR_POINT_BACK   (1)
+//#define SENSOR_POINT_UP     (2)
+//#define SENSOR_POINT_DOWN   (3)		
+//	uint8 ROTATION_DOWNWARD_FACING = 25 # MAV_SENSOR_ROTATION_PITCH_270
+//	uint8 ROTATION_UPWARD_FACING   = 24 # MAV_SENSOR_ROTATION_PITCH_90
+//	uint8 ROTATION_BACKWARD_FACING = 12 # MAV_SENSOR_ROTATION_PITCH_180
+//	uint8 ROTATION_FORWARD_FACING  = 0	# MAV_SENSOR_ROTATION_NONE
+//	uint8 ROTATION_LEFT_FACING	   = 6	# MAV_SENSOR_ROTATION_YAW_270
+//	uint8 ROTATION_RIGHT_FACING    = 2	# MAV_SENSOR_ROTATION_YAW_90
+
 
 #else/*__DISTANCE_KS103__*/	
 	uint8_t val[2] = {0, 0};
@@ -979,18 +1024,23 @@ MB12XX::collect()
 	struct distance_sensor_s report;
 	report.timestamp = hrt_absolute_time();
 	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
-	report.orientation = _rotation;
+	report.orientation =  distance_sensor_s::ROTATION_DOWNWARD_FACING;
 	report.current_distance = distance_m;
 	report.min_distance = get_minimum_distance();
 	report.max_distance = get_maximum_distance();
+	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
+	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
+
+	
 	report.covariance = 0.0f;
 	/* TODO: set proper ID */
 	report.id = 0;
 #endif/*__DISTANCE_FILTER__*/
 
-
 	/* publish it, if we are the primary */
 	if (_distance_sensor_topic != nullptr) {
+		
+	//	PX4_ZK("mb12xx-distance_m--aa %.2f",(double)distance_m);
 		orb_publish(ORB_ID(distance_sensor), _distance_sensor_topic, &report);
 	}
 

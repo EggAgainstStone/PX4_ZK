@@ -113,7 +113,7 @@ set(config_module_list
 	modules/attitude_estimator_q
 #	modules/ekf2
 	modules/local_position_estimator
-	modules/position_estimator_inav
+#	modules/position_estimator_inav
 	modules/landing_target_estimator
 	#modules/wind_estimator
 

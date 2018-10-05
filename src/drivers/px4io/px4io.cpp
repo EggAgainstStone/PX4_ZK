@@ -94,6 +94,7 @@
 #include "modules/dataman/dataman.h"
 
 #include "px4io_driver.h"
+#include "qiaoliang/qiaoliang_define.h"
 
 #define PX4IO_SET_DEBUG			_IOC(0xff00, 0)
 #define PX4IO_INAIR_RESTART_ENABLE	_IOC(0xff00, 1)

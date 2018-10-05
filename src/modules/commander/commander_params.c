@@ -459,8 +459,8 @@ PARAM_DEFINE_INT32(COM_FLTMODE3, -1);
  * @max 5
  * @decimal 2
  */
-PARAM_DEFINE_FLOAT(SONAR_SWITCH, 1.5f);
-
+PARAM_DEFINE_FLOAT(SONAR_SWITCH, 4.0f);
+#endif/*__DAVID_DISTANCE_FIX__*/
 /**
  * Fourth flightmode slot (1480-1640)
  *
@@ -787,59 +787,4 @@ PARAM_DEFINE_INT32(COM_FLIGHT_UUID, 0);
  */
 PARAM_DEFINE_INT32(COM_TAKEOFF_ACT, 0);
 
-#if __DAVID_CHAO_WARING__
-/**
- * to select forward id of ultrasonic
- *
- * the sensor id to use
- *
- * @group ZHIKUN
- * @min -255
- * @max 255
- */
-PARAM_DEFINE_INT32(SONAR_ID_F, -1);
-/**
- * to select backward id of ultrasonic
- *
- * the sensor id to use
- *
- * @group ZHIKUN
- * @min -255
- * @max 255
- */
-PARAM_DEFINE_INT32(SONAR_ID_B, -1);
-/**
- * to select downward id of ultrasonic
- *
- * the sensor id to use
- *
- * @group ZHIKUN
- * @min -255
- * @max 255
- */
-PARAM_DEFINE_INT32(SONAR_ID_D, -1);
-/**
- * to count_warning
- *
- * the count wanrning
- *
- * @group ZHIKUN
- * @min 0
- * @max 65535
- */
-PARAM_DEFINE_INT32(COUNT_WARN, 255);
-
-/**
- * ultra_sonar warning distance
- *
- * ultra_sonar warning distance
- *
- * @group ZHIKUN
- * @unit meter
- * @min 0
- * @max 5
- * @decimal 2
- */
-PARAM_DEFINE_FLOAT(WARN_DIS, 3.0f);
-#endif/*__DAVID_CHAO_WARING__*/
 

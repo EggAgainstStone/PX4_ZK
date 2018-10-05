@@ -74,6 +74,7 @@
 #ifdef HRT_PPM_CHANNEL
 # include <systemlib/ppm_decode.h>
 #endif
+#include "qiaoliang/qiaoliang_define.h"
 
 #define SCHEDULE_INTERVAL	2000	/**< The schedule interval in usec (500 Hz) */
 
@@ -1424,7 +1425,6 @@ PX4FMU::cycle()
 				safety.safety_off = false;
 				safety.safety_switch_available = true;
 			}
-
 			/* lazily publish the safety status */
 			if (_to_safety != nullptr) {
 				orb_publish(ORB_ID(safety), _to_safety, &safety);

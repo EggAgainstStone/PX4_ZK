@@ -988,7 +988,9 @@ bool prearm_check(orb_advert_t *mavlink_log_pub, const vehicle_status_flags_s &s
 	}
 
 	// safety button
-	if (safety.safety_switch_available && !safety.safety_off) {
+
+	if (safety.safety_switch_available && !safety.safety_off)
+	{
 		// Fail transition if we need safety switch press
 		if (prearm_ok && reportFailures) {
 			mavlink_log_critical(mavlink_log_pub, "ARMING DENIED: Press safety switch first");

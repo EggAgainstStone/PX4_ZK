@@ -49,6 +49,10 @@ BlockLocalPositionEstimator::BlockLocalPositionEstimator() :
 	_sub_sonar(nullptr),
 	_sub_landing_target_pose(ORB_ID(landing_target_pose), 1000 / 40, 0, &getSubscriptions()),
 	_sub_airdata(ORB_ID(vehicle_air_data), 0, 0, &getSubscriptions()),
+#if __DAVID_DISTANCE_TMP__
+	_sub_vehicle_status(ORB_ID(vehicle_status), 1000 / 100, 0, &getSubscriptions()),
+	_sub_manual_control_setpoint(ORB_ID(manual_control_setpoint), 1000 / 10, 0, &getSubscriptions()),
+#endif/*__DAVID_DISTANCE_TMP__*/	
 
 	// publications
 	_pub_lpos(ORB_ID(vehicle_local_position), -1, &getPublications()),
@@ -199,6 +203,15 @@ void BlockLocalPositionEstimator::update()
 			if (s->updated()) {
 				s->update();
 
+				//PX4_ZK("_s->get().timestamp %lld",s->get().timestamp);
+
+//				uint8 ROTATION_DOWNWARD_FACING = 25 # MAV_SENSOR_ROTATION_PITCH_270
+//				uint8 ROTATION_UPWARD_FACING   = 24 # MAV_SENSOR_ROTATION_PITCH_90
+//				uint8 ROTATION_BACKWARD_FACING = 12 # MAV_SENSOR_ROTATION_PITCH_180
+//				uint8 ROTATION_FORWARD_FACING  = 0	# MAV_SENSOR_ROTATION_NONE
+//				uint8 ROTATION_LEFT_FACING	   = 6	# MAV_SENSOR_ROTATION_YAW_270
+//				uint8 ROTATION_RIGHT_FACING    = 2	# MAV_SENSOR_ROTATION_YAW_90
+
 				if (s->get().timestamp == 0) { continue; }
 
 				if (s->get().type == distance_sensor_s::MAV_DISTANCE_SENSOR_LASER &&
@@ -208,7 +221,11 @@ void BlockLocalPositionEstimator::update()
 					mavlink_and_console_log_info(&mavlink_log_pub, "%sDownward-facing Lidar detected with ID %i", msg_label, i);
 
 				} else if (s->get().type == distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND &&
-					   s->get().orientation == distance_sensor_s::ROTATION_DOWNWARD_FACING &&
+#if __DAVID_DISTANCE__
+					s->get().orientation == distance_sensor_s::ROTATION_UPWARD_FACING &&
+#else/*__DAVID_DISTANCE__*/
+					s->get().orientation == distance_sensor_s::ROTATION_DOWNWARD_FACING &&
+#endif/*__DAVID_DISTANCE__*/					   
 					   _sub_sonar == nullptr) {
 					_sub_sonar = s;
 					mavlink_and_console_log_info(&mavlink_log_pub, "%sDownward-facing Sonar detected with ID %i", msg_label, i);
@@ -434,15 +451,29 @@ void BlockLocalPositionEstimator::update()
 			lidarCorrect();
 		}
 	}
+#if __DAVID_DISTANCE_TMP__
 
+if(_sub_vehicle_status.get().distance_sensor_ok&&(_sub_manual_control_setpoint.get().posctl_switch==1))
+{	
 	if (_sonarUpdated) {
 		if (_sensorTimeout & SENSOR_SONAR) {
 			sonarInit();
-
 		} else {
 			sonarCorrect();
 		}
 	}
+}
+#else/*__DAVID_DISTANCE_TMP__*/
+
+	if (_sonarUpdated) {
+		if (_sensorTimeout & SENSOR_SONAR) {
+			sonarInit();
+		} else {
+			sonarCorrect();
+		}
+	}
+
+#endif/*__DAVID_DISTANCE_TMP__*/		
 
 	if (_flowUpdated) {
 		if (_sensorTimeout & SENSOR_FLOW) {

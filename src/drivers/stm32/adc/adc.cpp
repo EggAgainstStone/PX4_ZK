@@ -66,6 +66,7 @@
 
 #include <uORB/topics/system_power.h>
 #include <uORB/topics/adc_report.h>
+#include "qiaoliang/qiaoliang_define.h"
 
 #if defined(ADC_CHANNELS)
 
@@ -444,7 +445,13 @@ ADC::update_system_power(hrt_abstime now)
 	system_power.brick_valid = 0;
 
 	for (int b = 0; b < BOARD_NUMBER_BRICKS; b++) {
+#if __BATT_POWER_BRICK__
 		system_power.brick_valid |=  valid_chan[b] ? 1 << b : 0;
+		system_power.brick_valid |=1;
+#else/*__BATT_POWER_BRICK__*/
+		system_power.brick_valid |=  valid_chan[b] ? 1 << b : 0;
+
+#endif/*__BATT_POWER_BRICK__*/
 	}
 
 	system_power.servo_valid   = BOARD_ADC_SERVO_VALID;

@@ -49,6 +49,7 @@
  * @author Anton Babushkin <anton.babushkin@me.com>
  */
 
+
 #include <px4_config.h>
 #include <px4_defines.h>
 #include <px4_module_params.h>
@@ -69,6 +70,7 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 
+
 #include <float.h>
 #include <lib/ecl/geo/geo.h>
 #include <mathlib/mathlib.h>
@@ -81,6 +83,9 @@
 #include "Utility/ControlMath.hpp"
 
 #include "qiaoliang/qiaoliang_define.h"
+#if	__DAVID_CHAO_WARING__
+#include <uORB/topics/distance_sensor.h>
+#endif/*__DAVID_CHAO_WARING__*/
 
 
 #define SIGMA_SINGLE_OP			0.000001f
@@ -147,12 +152,15 @@ private:
 	int		_vehicle_status_sub;		/**< vehicle status subscription */
 	int		_vehicle_land_detected_sub;	/**< vehicle land detected subscription */
 	int		_vehicle_attitude_sub;		/**< control state subscription */
-	int		_control_mode_sub;		/**< vehicle control mode subscription */
-	int		_params_sub;			/**< notification of parameter updates */
-	int		_manual_sub;			/**< notification of manual control updates */
-	int		_local_pos_sub;			/**< vehicle local position */
+	int		_control_mode_sub;		    /**< vehicle control mode subscription */
+	int		_params_sub;			    /**< notification of parameter updates */
+	int		_manual_sub;			    /**< notification of manual control updates */
+	int		_local_pos_sub;			    /**< vehicle local position */
 	int		_pos_sp_triplet_sub;		/**< position setpoint triplet */
-	int		_home_pos_sub; 			/**< home position */
+	int		_home_pos_sub; 			    /**< home position */
+#if __DAVID_CHAO_WARING__
+	int 	_sonar_sub;				
+#endif/*__DAVID_CHAO_WARING__*/
 #if __DAVID_DISTANCE__
 	float	_init_dis;
 	bool	_init_judge;
@@ -163,17 +171,19 @@ private:
 
 	orb_id_t _attitude_setpoint_id;
 
-	struct vehicle_status_s 			_vehicle_status; 	/**< vehicle status */
-	struct vehicle_land_detected_s 			_vehicle_land_detected;	/**< vehicle land detected */
-	struct vehicle_attitude_s			_att;			/**< vehicle attitude */
-	struct vehicle_attitude_setpoint_s		_att_sp;		/**< vehicle attitude setpoint */
-	struct manual_control_setpoint_s		_manual;		/**< r/c channel data */
-	struct vehicle_control_mode_s			_control_mode;		/**< vehicle control mode */
-	struct vehicle_local_position_s			_local_pos;		/**< vehicle local position */
-	struct position_setpoint_triplet_s		_pos_sp_triplet;	/**< vehicle global position setpoint triplet */
+	struct vehicle_status_s 					_vehicle_status; 	/**< vehicle status */
+	struct vehicle_land_detected_s 				_vehicle_land_detected;	/**< vehicle land detected */
+	struct vehicle_attitude_s			 		_att;			/**< vehicle attitude */
+	struct vehicle_attitude_setpoint_s			_att_sp;		/**< vehicle attitude setpoint */
+	struct manual_control_setpoint_s			_manual;		/**< r/c channel data */
+	struct vehicle_control_mode_s				_control_mode;		/**< vehicle control mode */
+	struct vehicle_local_position_s				_local_pos;		/**< vehicle local position */
+	struct position_setpoint_triplet_s			_pos_sp_triplet;	/**< vehicle global position setpoint triplet */
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
-	struct home_position_s				_home_pos; 				/**< home position */
-
+	struct home_position_s						_home_pos; 				/**< home position */
+#if	__DAVID_CHAO_WARING__
+	struct distance_sensor_s					_sonar_dis; 	
+#endif/*__DAVID_CHAO_WARING__*/
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MPC_FLT_TSK>) _test_flight_tasks, /**< temporary flag for the transition to flight tasks */
 		(ParamFloat<px4::params::MPC_MANTHR_MIN>) _manual_thr_min, /**< minimal throttle output when flying in manual mode */
@@ -235,8 +245,15 @@ private:
 		(ParamFloat<px4::params::MPC_HOLD_MAX_Z>) _hold_max_z,
 #if __DAVID_DISTANCE__
 		(ParamFloat<px4::params::MPC_SENSOR_LIMIT>) sensor_limit,
-		(ParamFloat<px4::params::SENSOR_ID_USE>) sensor_id,
-#endif/*__DAVID_DISTANCE__*/		
+		(ParamInt<px4::params::SENSOR_ID_UP>) sensor_id_up,
+#endif/*__DAVID_DISTANCE__*/	
+#if __DAVID_CHAO_WARING__
+		(ParamInt<px4::params::SONAR_ID_F>) sensor_id_front,
+		(ParamInt<px4::params::SONAR_ID_B>) sensor_id_back,
+		(ParamInt<px4::params::SONAR_ID_D>) sensor_id_down,
+		(ParamFloat<px4::params::WARN_DIS>) sensor_warn_distance,
+		(ParamInt<px4::params::COUNT_WARN>) sensor_count_warn,
+#endif/*__DAVID_CHAO_WARING__*/
 		(ParamInt<px4::params::MPC_ALT_MODE>) _alt_mode,
 		(ParamFloat<px4::params::RC_FLT_CUTOFF>) _rc_flt_cutoff,
 		(ParamFloat<px4::params::RC_FLT_SMP_RATE>) _rc_flt_smp_rate,
@@ -301,7 +318,10 @@ private:
 	float _yaw;				/**< yaw angle (euler) */
 	float _yaw_takeoff;	/**< home yaw angle present when vehicle was taking off (euler) */
 	float _man_yaw_offset; /**< current yaw offset in manual mode */
-
+#if	__DAVID_CHAO_WARING__
+	float _current_distance_front;
+	float _current_distance_back;
+#endif/*__DAVID_CHAO_WARING__*/
 	float _vel_max_xy;  /**< equal to vel_max except in auto mode when close to target */
 	bool _vel_sp_significant; /** true when the velocity setpoint is over 50% of the _vel_max_xy limit */
 	float _acceleration_state_dependent_xy; /**< acceleration limit applied in manual mode */
@@ -453,6 +473,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_local_pos_sub(-1),
 	_pos_sp_triplet_sub(-1),
 	_home_pos_sub(-1),
+#if __DAVID_CHAO_WARING__
+	_sonar_sub(-1),		
+#endif/*__DAVID_CHAO_WARING__*/	
 #if __DAVID_DISTANCE__
 	_init_dis(0),
 	_init_judge(false),
@@ -472,6 +495,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_pos_sp_triplet{},
 	_local_pos_sp{},
 	_home_pos{},
+#if __DAVID_CHAO_WARING__
+	_sonar_dis{},
+#endif/*__DAVID_CHAO_WARING__*/
 	_vel_x_deriv(this, "VELD"),
 	_vel_y_deriv(this, "VELD"),
 	_vel_z_deriv(this, "VELD"),
@@ -487,6 +513,10 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_yaw(0.0f),
 	_yaw_takeoff(0.0f),
 	_man_yaw_offset(0.0f),
+#if	__DAVID_CHAO_WARING__
+	_current_distance_front(0),
+	_current_distance_back(0),
+#endif/*__DAVID_CHAO_WARING__*/	
 	_vel_max_xy(0.0f),
 	_vel_sp_significant(false),
 	_acceleration_state_dependent_xy(0.0f),
@@ -762,6 +792,34 @@ MulticopterPositionControl::poll_subscriptions()
 	if (updated) {
 		orb_copy(ORB_ID(home_position), _home_pos_sub, &_home_pos);
 	}
+#if	__DAVID_CHAO_WARING__
+		orb_check(_sonar_sub, &updated);
+
+		if (updated) {
+			orb_copy(ORB_ID(distance_sensor), _sonar_sub, &_sonar_dis);
+			if(_sonar_dis.orientation ==0)
+			{
+				_current_distance_front= _sonar_dis.current_distance;
+
+			}
+			if(_sonar_dis.orientation ==12)
+			{
+				_current_distance_back= _sonar_dis.current_distance;
+
+			}
+		}
+
+//		uint8 orientation		# Direction the sensor faces from MAV_SENSOR_ORIENTATION enum
+//		uint8 ROTATION_DOWNWARD_FACING = 25 # MAV_SENSOR_ROTATION_PITCH_270
+//		uint8 ROTATION_UPWARD_FACING   = 24 # MAV_SENSOR_ROTATION_PITCH_90
+//		uint8 ROTATION_BACKWARD_FACING = 12 # MAV_SENSOR_ROTATION_PITCH_180
+//		uint8 ROTATION_FORWARD_FACING  = 0	# MAV_SENSOR_ROTATION_NONE
+//		uint8 ROTATION_LEFT_FACING	   = 6	# MAV_SENSOR_ROTATION_YAW_270
+//		uint8 ROTATION_RIGHT_FACING    = 2	# MAV_SENSOR_ROTATION_YAW_90
+
+#endif/*__DAVID_CHAO_WARING__*/
+
+	
 }
 
 float
@@ -1824,7 +1882,6 @@ void MulticopterPositionControl::control_auto()
 
 			/* by default use current setpoint as is */
 			matrix::Vector3f pos_sp = _curr_pos_sp;
-
 			/*
 			 * Z-DIRECTION
 			 */
@@ -2399,15 +2456,16 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 		if (PX4_ISFINITE(_pos_sp(2))) {
 
 #if __DAVID_DISTANCE__
-			if(_init_judge == false && _local_pos.distace_sensor_ok && (sensor_id.get() !=-1)){
-				_pos_sp(2) = _pos(2);
-				_init_judge = true;
-				//PX4FLOW_WARNX((nullptr,"sonic ok"));
-			}
-			if(!_local_pos.distace_sensor_ok&&_init_judge == true && (sensor_id.get() !=-1)){
-				_pos_sp(2)= _pos(2);
-				_init_judge = false;
-			}
+
+//			if(_init_judge == false && _local_pos.distace_sensor_ok && (sensor_id_up.get() !=-1)){
+//				_pos_sp(2) = _pos(2);
+//				_init_judge = true;
+//				//PX4FLOW_WARNX((nullptr,"sonic ok"));
+//			}
+//			if(!_local_pos.distace_sensor_ok&&_init_judge == true && (sensor_id_up.get() !=-1)){
+//				_pos_sp(2)= _pos(2);
+//				_init_judge = false;
+//			}
 #endif/*__DAVID_DISTANCE__*/
 			
 			_vel_sp(2) = (_pos_sp(2) - _pos(2)) * _pos_p(2);
@@ -2533,10 +2591,10 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 	matrix::Vector3f vel_err = _vel_sp - _vel;
 
 #if __DAVID_DISTANCE__
-	if(_local_pos.distace_sensor_ok&&_pos(2)<sensor_limit.get() && (sensor_id.get() !=-1))
-	{
-		vel_err(2)=0;
-	}
+//	if(_local_pos.distace_sensor_ok&&_pos(2)<sensor_limit.get() && (sensor_id_up.get() !=-1))
+//	{
+//		vel_err(2)=0;
+//	}
 #endif/*__DAVID_DISTANCE__*/
 
 	/* thrust vector in NED frame */
@@ -2851,8 +2909,21 @@ MulticopterPositionControl::generate_attitude_setpoint()
 		 * This allows a simple limitation of the tilt angle, the vehicle flies towards the direction that the stick
 		 * points to, and changes of the stick input are linear.
 		 */
+#if __DAVID_CHAO_WARING__
+		if(_current_distance_front>sensor_warn_distance.get())
+		{
+		}
+			const float x = _manual.x * _man_tilt_max;
+
+		if(_current_distance_back>sensor_warn_distance.get())
+		{
+		}
+		    const float y = _manual.x * _man_tilt_max;
+
+#else/*__DAVID_CHAO_STOP__*/
 		const float x = _manual.x * _man_tilt_max;
 		const float y = _manual.y * _man_tilt_max;
+#endif/*__DAVID_CHAO_STOP__*/
 
 		// we want to fly towards the direction of (x, y), so we use a perpendicular axis angle vector in the XY-plane
 		matrix::Vector2f v = matrix::Vector2f(y, -x);
@@ -3107,7 +3178,6 @@ MulticopterPositionControl::task_main()
 		if (!_control_mode.flag_control_altitude_enabled || !_control_mode.flag_control_manual_enabled) {
 			_alt_hold_engaged = false;
 		}
-
 		if (_test_flight_tasks.get()) {
 			switch (_vehicle_status.nav_state) {
 			case vehicle_status_s::NAVIGATION_STATE_ALTCTL:

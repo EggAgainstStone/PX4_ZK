@@ -1206,7 +1206,7 @@ Commander::run()
 	param_t _param_flight_uuid = param_find("COM_FLIGHT_UUID");
 	param_t _param_takeoff_finished_action = param_find("COM_TAKEOFF_ACT");
 #if __DAVID_DISTANCE__
-	param_t _param_sensor_id= param_find("SENSOR_ID_USE");
+	param_t _param_sensor_id= param_find("SENSOR_ID_UP");
 #endif/*__DAVID_DISTANCE__*/
 #if __DAVID_DISTANCE_FIX__
 	param_t _param_sonar_switch= param_find("SONAR_SWITCH");
@@ -1219,13 +1219,7 @@ Commander::run()
 	param_t _param_fmode_5 = param_find("COM_FLTMODE5");
 	param_t _param_fmode_6 = param_find("COM_FLTMODE6");
 	
-#if __DAVID_CHAO_WARING__
-		param_t _param_sonar_id_f= param_find("SONAR_ID_F");
-		param_t _param_sonar_id_b= param_find("SONAR_ID_B");
-		param_t _param_sonar_id_d= param_find("SONAR_ID_D");
-		param_t _param_warn_dis = param_find("WARN_DIS");
-		param_t _param_count_warn = param_find("COUNT_WARN");
-#endif/*__DAVID_CHAO_WARING__*/
+
 
 	/* failsafe response to loss of navigation accuracy */
 	param_t _param_posctl_nav_loss_act = param_find("COM_POSCTL_NAVL");
@@ -1491,13 +1485,6 @@ Commander::run()
 #if __DAVID_DISTANCE_FIX__
 	float sonar_switch;
 #endif/*__DAVID_DISTANCE_FIX__*/
-#if __DAVID_CHAO_WARING__
-	int32_t sonar_id_f;
-	int32_t sonar_id_b;
-	int32_t sonar_id_d;
-	float warn_dis;
-	int32_t count_warn;
-#endif/*__DAVID_CHAO_WARING__*/
 
 
 	/* check which state machines for changes, clear "changed" flag */
@@ -1604,13 +1591,7 @@ Commander::run()
 #if __DAVID_DISTANCE_FIX__
 			param_get(_param_sonar_switch, &sonar_switch);
 #endif/*__DAVID_DISTANCE_FIX__*/
-#if __DAVID_CHAO_WARING__
-			param_get(_param_sonar_id_f, &sonar_id_f);
-			param_get(_param_sonar_id_b, &sonar_id_b);
-			param_get(_param_sonar_id_d, &sonar_id_d);
-			param_get(_param_warn_dis, &warn_dis);
-			param_get(_param_count_warn, &count_warn);
-#endif/*__DAVID_CHAO_WARING__*/
+
 
 			// If we update parameters the first time
 			// make sure the hysteresis time gets set.
@@ -1706,13 +1687,18 @@ Commander::run()
 		// poll the telemetry status
 		poll_telemetry_status();
 
+
+
 		orb_check(system_power_sub, &updated);
 
 		if (updated) {
+			
 			system_power_s system_power = {};
 			orb_copy(ORB_ID(system_power), system_power_sub, &system_power);
 
 			if (hrt_elapsed_time(&system_power.timestamp) < 200_ms) {
+
+	//	PX4_ZK("servo_valid %d brick_valid %d usb_connected %d",system_power.servo_valid,system_power.brick_valid,system_power.usb_connected);
 				if (system_power.servo_valid &&
 				    !system_power.brick_valid &&
 				    !system_power.usb_connected) {
@@ -1734,6 +1720,7 @@ Commander::run()
 					px4_shutdown_request(true, false);
 				}
 			}
+			
 		}
 
 		/* update safety topic */
@@ -2146,20 +2133,25 @@ Commander::run()
 				if(armed.armed){//after the plane disarmed,to do warning function;
 				//if(1){
 					orb_check(distance_sensor_sub, &updated);
+					
 					if(updated){
+		//			PX4_ZK("distance_sensor_sub %d",updated);
 						orb_copy(ORB_ID(distance_sensor), distance_sensor_sub, &distance_sensor_rece);
-						
-					if(distance_sensor_rece.id == sensor_id){//the hold height sonar id, if the sonar distance is between max and min, to work;
-						if((distance_sensor_rece.current_distance< sonar_switch) &&(distance_sensor_rece.current_distance>-0.1f))
+
+		//			PX4_ZK("distance_sensor_rece.id  %d  sensorid %d",distance_sensor_rece.id,sensor_id);
+					if(distance_sensor_rece.id == sensor_id)
+						{//the hold height sonar id, if the sonar distance is between max and min, to work;
+		//			PX4_ZK("current_distance %.2f  sonar_switch %.2f",(double)distance_sensor_rece.current_distance,(double)sonar_switch);
+						if((distance_sensor_rece.current_distance< sonar_switch) &&(distance_sensor_rece.current_distance>0.2f))
 						{
 							status.distance_sensor_ok = true;
 						
 						}else{
 							status.distance_sensor_ok = false;
-						}
+						 }
 
-						}
-					}
+					    }
+				    }
 				}else{
 					status.distance_sensor_ok = false;
 					status.distance_pressure_ok = false;
@@ -2367,14 +2359,21 @@ Commander::run()
 			/* ARM
 			 * check if left stick is in lower right position or arm button is pushed or arm switch has transition from disarm to arm
 			 * and we're in MANUAL mode */
+#if __DAVID_ARMED_FIX1__
+			const bool stick_in_lower_right = sp_man.z < 0.1f;
+#else
 			const bool stick_in_lower_right = (sp_man.r > STICK_ON_OFF_LIMIT && sp_man.z < 0.1f);
+#endif/*__DAVID_ARMED_FIX1__*/			
 			const bool arm_switch_to_arm_transition = arm_switch_is_button == 0 &&
 					_last_sp_man_arm_switch == manual_control_setpoint_s::SWITCH_POS_OFF &&
 					sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_ON;
 
 			if (!in_armed_state &&
 			    status.rc_input_mode != vehicle_status_s::RC_IN_MODE_OFF &&
-			    (stick_in_lower_right || arm_button_pressed || arm_switch_to_arm_transition)) {
+			    (stick_in_lower_right 
+			    || arm_button_pressed
+			    || arm_switch_to_arm_transition)) 
+			    {
 				if ((stick_on_counter == rc_arm_hyst && stick_off_counter < rc_arm_hyst) || arm_switch_to_arm_transition) {
 
 					/* we check outside of the transition function here because the requirement
@@ -2725,7 +2724,7 @@ Commander::run()
 
 			status.timestamp = now;
 			orb_publish(ORB_ID(vehicle_status), status_pub, &status);
-
+//PX4_ZK("orb_publish(ORB_ID(vehicle_status) %d",status.distance_sensor_ok);
 			armed.timestamp = now;
 
 			/* set prearmed state if safety is off, or safety is not present and 5 seconds passed */
@@ -3288,6 +3287,35 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 				}
 			}
 		}
+		
+#if __DAVID_DISTANCE_FIX__
+
+			switch(sp_man.posctl_switch){
+				
+				case manual_control_setpoint_s::SWITCH_POS_OFF: 
+					PX4_ZK("MANUAL OK");
+					sonic_state =false;
+					mavlink_and_console_log_info(&mavlink_log_pub, "manual_state");
+					break;
+
+				case manual_control_setpoint_s::SWITCH_POS_ON:	
+					
+					if(status.distance_sensor_ok){
+						
+						mavlink_and_console_log_info(&mavlink_log_pub, "sonic control state is ok!! ");			
+						sonic_state =true;
+						tune_positive(true);
+					}
+					break;
+	
+				default:
+					break;
+//uint8 SWITCH_POS_NONE = 0		# switch is not mapped
+//uint8 SWITCH_POS_ON = 1			# switch activated (value = 1)
+//uint8 SWITCH_POS_MIDDLE = 2		# middle position (value = 0)
+//uint8 SWITCH_POS_OFF = 3			
+			}
+#endif/*__DAVID_DISTANCE_FIX__*/
 
 		return res;
 	}
@@ -3523,8 +3551,8 @@ set_control_mode()
 		control_mode.flag_control_rates_enabled = true;
 		control_mode.flag_control_attitude_enabled = true;
 		control_mode.flag_control_rattitude_enabled = false;
-		control_mode.flag_control_altitude_enabled = true;
-		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_altitude_enabled = false;
+		control_mode.flag_control_climb_rate_enabled = false;
 		control_mode.flag_control_position_enabled = false;
 		control_mode.flag_control_velocity_enabled = false;
 		control_mode.flag_control_acceleration_enabled = false;
@@ -3592,6 +3620,7 @@ set_control_mode()
 		control_mode.flag_control_velocity_enabled = false;
 		control_mode.flag_control_acceleration_enabled = false;
 		control_mode.flag_control_termination_enabled = false;
+	
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_POSCTL:
@@ -3612,7 +3641,7 @@ set_control_mode()
 		}else{
 			control_mode.flag_sonic_sensor				= false;
 		}
-#endif/*__DAVID_DISTANCE__*/		
+#endif/*__DAVID_DISTANCE__*/			
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTL:

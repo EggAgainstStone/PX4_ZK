@@ -15,7 +15,7 @@ set(config_module_list
 	#
 	drivers/barometer
 	drivers/differential_pressure
-#	drivers/distance_sensor
+	drivers/distance_sensor
 	drivers/magnetometer
 	drivers/telemetry
 
@@ -35,7 +35,7 @@ set(config_module_list
 	drivers/protocol_splitter
 	drivers/pwm_input
 	drivers/pwm_out_sim
-	drivers/px4flow
+#	drivers/px4flow
 	drivers/px4fmu
 	drivers/px4io
 	drivers/rgbled

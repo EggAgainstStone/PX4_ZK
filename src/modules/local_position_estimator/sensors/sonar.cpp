@@ -1,6 +1,7 @@
 #include "../BlockLocalPositionEstimator.hpp"
 #include <systemlib/mavlink_log.h>
 #include <matrix/math.hpp>
+#include "qiaoliang/qiaoliang_define.h"
 
 extern orb_advert_t mavlink_log_pub;
 
@@ -46,11 +47,25 @@ void BlockLocalPositionEstimator::sonarInit()
 
 int BlockLocalPositionEstimator::sonarMeasure(Vector<float, n_y_sonar> &y)
 {
-	// measure
+// measure
+#if __DAVID_DISTANCE__
+	float d = - _sub_sonar->get().current_distance;
+//	PX4_ZK("distance_sensor_s::ROTATION_UPWARD_FACING %.2f",(double)d);
+
+#else/*__DAVID_DISTANCE__*/
 	float d = _sub_sonar->get().current_distance;
+#endif/*__DAVID_DISTANCE__*/
+	//PX4_ZK("current_distance %.2f",(double)d);
+
 	float eps = 0.01f;	// 1 cm
 	float min_dist = _sub_sonar->get().min_distance + eps;
+#if __DAVID_DISTANCE__
+	float max_dist = _sonar_max_switch.get();
+//PX4_ZK("_sonar_max_switch.get() %.2f",(double)_sonar_max_switch.get());
+#else/* __DAVID_DISTANCE__*/
 	float max_dist = _sub_sonar->get().max_distance - eps;
+#endif/* __DAVID_DISTANCE__*/
+
 
 	// prevent driver from setting min dist below eps
 	if (min_dist < eps) {
@@ -58,17 +73,26 @@ int BlockLocalPositionEstimator::sonarMeasure(Vector<float, n_y_sonar> &y)
 	}
 
 	// check for bad data
-	if (d > max_dist || d < min_dist) {
+#if __DAVID_DISTANCE__
+	if (fabsf(d) > max_dist || fabsf(d) < min_dist) 
+#else
+	if (d > max_dist || d < min_dist) 
+#endif/**/
+	{
 		return -1;
 	}
 
 	// update stats
 	_sonarStats.update(Scalarf(d));
 	_time_last_sonar = _timeStamp;
+//PX4_ZK("-aa-_time_last_sonar %lld",_time_last_sonar);
 	y.setZero();
 	y(0) = (d + _sonar_z_offset.get()) *
 	       cosf(_eul(0)) *
 	       cosf(_eul(1));
+
+	
+//	PX4_ZK("current_distance y(0) %.2f",(double)y(0));
 	return OK;
 }
 
@@ -146,6 +170,7 @@ void BlockLocalPositionEstimator::sonarCorrect()
 
 void BlockLocalPositionEstimator::sonarCheckTimeout()
 {
+//PX4_ZK("_timeStamp %lld _time_last_sonar %lld",_timeStamp,_time_last_sonar);
 	if (_timeStamp - _time_last_sonar > SONAR_TIMEOUT) {
 		if (!(_sensorTimeout & SENSOR_SONAR)) {
 			_sensorTimeout |= SENSOR_SONAR;

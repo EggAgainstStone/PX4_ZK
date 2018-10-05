@@ -31,6 +31,7 @@
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/ekf2_innovations.h>
+#include "qiaoliang/qiaoliang_define.h"
 
 using namespace matrix;
 using namespace control;
@@ -262,7 +263,10 @@ private:
 	uORB::Subscription<distance_sensor_s> *_sub_sonar;
 	uORB::Subscription<landing_target_pose_s> _sub_landing_target_pose;
 	uORB::Subscription<vehicle_air_data_s> _sub_airdata;
-
+#if __DAVID_DISTANCE_TMP__
+	uORB::Subscription<vehicle_status_s> _sub_vehicle_status;
+	uORB::Subscription<manual_control_setpoint_s> _sub_manual_control_setpoint;
+#endif/*__DAVID_DISTANCE_TMP__*/
 	// publications
 	uORB::Publication<vehicle_local_position_s> _pub_lpos;
 	uORB::Publication<vehicle_global_position_s> _pub_gpos;
@@ -284,7 +288,9 @@ private:
 		// sonar parameters
 		(ParamFloat<px4::params::LPE_SNR_Z>) _sonar_z_stddev,
 		(ParamFloat<px4::params::LPE_SNR_OFF_Z>) _sonar_z_offset,
-
+#if __DAVID_DISTANCE__
+		(ParamFloat<px4::params::SONAR_SWITCH>) _sonar_max_switch,
+#endif/*__DAVID_DISTANCE__*/
 		// lidar parameters
 		(ParamFloat<px4::params::LPE_LDR_Z>) _lidar_z_stddev,
 		(ParamFloat<px4::params::LPE_LDR_OFF_Z>) _lidar_z_offset,

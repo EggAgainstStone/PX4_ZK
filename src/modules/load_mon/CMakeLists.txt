@@ -33,7 +33,7 @@
 px4_add_module(
 	MODULE modules__load_mon
 	MAIN load_mon
-	STACK_MAIN 1200
+	STACK_MAIN 1600
 	COMPILE_FLAGS
 	SRCS
 		load_mon.cpp
