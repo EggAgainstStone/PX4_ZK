@@ -58,7 +58,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_magnetometer.h>
-
+#include "qiaoliang/qiaoliang_define.h"
 extern "C" __EXPORT int attitude_estimator_q_main(int argc, char *argv[]);
 
 using matrix::Dcmf;

@@ -184,6 +184,10 @@ private:
 #if	__DAVID_CHAO_WARING__
 	struct distance_sensor_s					_sonar_dis; 	
 #endif/*__DAVID_CHAO_WARING__*/
+#if __DAVID_YAW_FIX_ARM__
+	bool  _control_flag;
+#endif/*__DAVID_YAW_FIX_ARM__*/
+
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MPC_FLT_TSK>) _test_flight_tasks, /**< temporary flag for the transition to flight tasks */
 		(ParamFloat<px4::params::MPC_MANTHR_MIN>) _manual_thr_min, /**< minimal throttle output when flying in manual mode */
@@ -248,11 +252,9 @@ private:
 		(ParamInt<px4::params::SENSOR_ID_UP>) sensor_id_up,
 #endif/*__DAVID_DISTANCE__*/	
 #if __DAVID_CHAO_WARING__
-		(ParamInt<px4::params::SONAR_ID_F>) sensor_id_front,
-		(ParamInt<px4::params::SONAR_ID_B>) sensor_id_back,
-		(ParamInt<px4::params::SONAR_ID_D>) sensor_id_down,
-		(ParamFloat<px4::params::WARN_DIS>) sensor_warn_distance,
-		(ParamInt<px4::params::COUNT_WARN>) sensor_count_warn,
+		(ParamFloat<px4::params::WARN_DIS_Y>) warn_dis_yuan,
+		(ParamFloat<px4::params::WARN_DIS_J>) warn_dis_jin,
+		(ParamInt<px4::params::COUNT_WARN>) count_warn,
 #endif/*__DAVID_CHAO_WARING__*/
 		(ParamInt<px4::params::MPC_ALT_MODE>) _alt_mode,
 		(ParamFloat<px4::params::RC_FLT_CUTOFF>) _rc_flt_cutoff,
@@ -321,6 +323,7 @@ private:
 #if	__DAVID_CHAO_WARING__
 	float _current_distance_front;
 	float _current_distance_back;
+	float _manual_x_tmp;
 #endif/*__DAVID_CHAO_WARING__*/
 	float _vel_max_xy;  /**< equal to vel_max except in auto mode when close to target */
 	bool _vel_sp_significant; /** true when the velocity setpoint is over 50% of the _vel_max_xy limit */
@@ -498,6 +501,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 #if __DAVID_CHAO_WARING__
 	_sonar_dis{},
 #endif/*__DAVID_CHAO_WARING__*/
+#if __DAVID_YAW_FIX_ARM__
+	_control_flag(false),
+#endif/*__DAVID_YAW_FIX_ARM__*/
 	_vel_x_deriv(this, "VELD"),
 	_vel_y_deriv(this, "VELD"),
 	_vel_z_deriv(this, "VELD"),
@@ -516,6 +522,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 #if	__DAVID_CHAO_WARING__
 	_current_distance_front(0),
 	_current_distance_back(0),
+	_max_distance(0),
+	_manual_x_tmp(0),
+	_manual_y_tmp(0),	
 #endif/*__DAVID_CHAO_WARING__*/	
 	_vel_max_xy(0.0f),
 	_vel_sp_significant(false),
@@ -797,18 +806,19 @@ MulticopterPositionControl::poll_subscriptions()
 
 		if (updated) {
 			orb_copy(ORB_ID(distance_sensor), _sonar_sub, &_sonar_dis);
-			if(_sonar_dis.orientation ==0)
+			if(_sonar_dis.orientation == distance_sensor_s::ROTATION_FORWARD_FACING)
 			{
-				_current_distance_front= _sonar_dis.current_distance;
-
+				_current_distance_front = _sonar_dis.current_distance;
+			//	PX4_ZK("_current_distance_front %.2f",(double)_current_distance_front);
 			}
-			if(_sonar_dis.orientation ==12)
+			if(_sonar_dis.orientation == distance_sensor_s::ROTATION_BACKWARD_FACING)
 			{
-				_current_distance_back= _sonar_dis.current_distance;
-
+				_current_distance_back = _sonar_dis.current_distance;
+				//PX4_ZK("_current_distance_back %.2f",(double)_current_distance_back);
 			}
+			_max_distance = _sonar_dis.max_distance;
 		}
-
+		
 //		uint8 orientation		# Direction the sensor faces from MAV_SENSOR_ORIENTATION enum
 //		uint8 ROTATION_DOWNWARD_FACING = 25 # MAV_SENSOR_ROTATION_PITCH_270
 //		uint8 ROTATION_UPWARD_FACING   = 24 # MAV_SENSOR_ROTATION_PITCH_90
@@ -2909,21 +2919,37 @@ MulticopterPositionControl::generate_attitude_setpoint()
 		 * This allows a simple limitation of the tilt angle, the vehicle flies towards the direction that the stick
 		 * points to, and changes of the stick input are linear.
 		 */
-#if __DAVID_CHAO_WARING__
-		if(_current_distance_front>sensor_warn_distance.get())
-		{
+#if  __DAVID_CHAO_WARING__
+		if(_manual.x>0){
+       		 if(_current_distance_front>warn_dis_jin.get()) 
+			 {
+			    float ratio_front = math::constrain((_current_distance_front - warn_dis_jin.get())/(warn_dis_yuan.get()-warn_dis_jin.get()),0.0f,1.0f);
+//   PX4_ZK("ratio_front %.2f _current_distance_front %.2f",(double)ratio_front,(double)_current_distance_front);
+				_manual_x_tmp= _manual.x * ratio_front;
+			 }else{
+				_manual_x_tmp= 0;
+			 }
+		}else{
+		     if(_current_distance_back>warn_dis_jin.get()) 
+		     {
+				float ratio_back = math::constrain((_current_distance_back - warn_dis_jin.get())/(warn_dis_yuan.get()-warn_dis_jin.get()),0.0f,1.0f);
+			//	PX4_ZK("ratio_back %.2f _current_distance_back %.2f",(double)ratio_back,(double)_current_distance_back);
+				_manual_x_tmp= _manual.x * ratio_back;
+		    }else{
+				_manual_x_tmp= 0;
+			}
 		}
-			const float x = _manual.x * _man_tilt_max;
+//		PX4_ZK("_manual X %.2f _manual_x_tmp %.2f",(double)_manual.x,(double)_manual_x_tmp);
 
-		if(_current_distance_back>sensor_warn_distance.get())
-		{
-		}
-		    const float y = _manual.x * _man_tilt_max;
+		const float x = _manual_x_tmp * _man_tilt_max;
+	    const float y = _manual.y * _man_tilt_max;
 
-#else/*__DAVID_CHAO_STOP__*/
+#else/*__DAVID_CHAO_WARING__*/
+
 		const float x = _manual.x * _man_tilt_max;
 		const float y = _manual.y * _man_tilt_max;
-#endif/*__DAVID_CHAO_STOP__*/
+		
+#endif/*__DAVID_CHAO_WARING__*/
 
 		// we want to fly towards the direction of (x, y), so we use a perpendicular axis angle vector in the XY-plane
 		matrix::Vector2f v = matrix::Vector2f(y, -x);
@@ -3012,7 +3038,7 @@ bool MulticopterPositionControl::manual_wants_takeoff()
 	const bool has_manual_control_present = _control_mode.flag_control_manual_enabled && _manual.timestamp > 0;
 
 	// Manual takeoff is triggered if the throttle stick is above 65%.
-	return (has_manual_control_present && (_manual.z > 0.65f || !_control_mode.flag_control_climb_rate_enabled));
+	return (has_manual_control_present && (_manual.z > 0.6f || !_control_mode.flag_control_climb_rate_enabled));
 }
 
 bool MulticopterPositionControl::manual_wants_landing()
@@ -3038,6 +3064,9 @@ MulticopterPositionControl::task_main()
 	_local_pos_sub = orb_subscribe(ORB_ID(vehicle_local_position));
 	_pos_sp_triplet_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
 	_home_pos_sub = orb_subscribe(ORB_ID(home_position));
+#if __DAVID_CHAO_WARING__
+	_sonar_sub= orb_subscribe(ORB_ID(distance_sensor));
+#endif/*__DAVID_CHAO_WARING__*/
 
 	parameters_update(true);
 
@@ -3169,6 +3198,29 @@ MulticopterPositionControl::task_main()
 
 		update_velocity_derivative();
 
+
+#if __DAVID_YAW_FIX_ARM__
+
+
+//	uint8 ARMING_STATE_INIT = 0
+//	uint8 ARMING_STATE_STANDBY = 1
+//	uint8 ARMING_STATE_ARMED = 2
+//	uint8 ARMING_STATE_STANDBY_ERROR = 3
+//	uint8 ARMING_STATE_REBOOT = 4
+//	uint8 ARMING_STATE_IN_AIR_RESTORE = 5
+//	uint8 ARMING_STATE_MAX = 6
+
+	if(_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED){
+		if(_manual.z > 0.55f && _control_flag == false){
+			_control_flag = true;
+			_reset_yaw_sp = true;
+		}
+    }else{	
+		_reset_yaw_sp = true;			
+		_control_flag = false;
+	}
+
+#endif/*__DAVID_YAW_FIX_ARM__*/
 		// reset the horizontal and vertical position hold flags for non-manual modes
 		// or if position / altitude is not controlled
 		if (!_control_mode.flag_control_position_enabled || !_control_mode.flag_control_manual_enabled) {
@@ -3278,16 +3330,29 @@ MulticopterPositionControl::task_main()
 
 			publish_local_pos_sp();
 			publish_attitude();
-
 		} else {
+#if __DAVID_YAW_FIX_ARM__
+			if ((_control_mode.flag_control_altitude_enabled ||
+				_control_mode.flag_control_position_enabled ||
+				_control_mode.flag_control_climb_rate_enabled ||
+				_control_mode.flag_control_velocity_enabled ||
+				_control_mode.flag_control_acceleration_enabled)&&
+				_control_flag
+			 ) 
+
+#else
 			if (_control_mode.flag_control_altitude_enabled ||
 			    _control_mode.flag_control_position_enabled ||
 			    _control_mode.flag_control_climb_rate_enabled ||
 			    _control_mode.flag_control_velocity_enabled ||
-			    _control_mode.flag_control_acceleration_enabled) {
+			    _control_mode.flag_control_acceleration_enabled) 
+#endif/*__DAVID_YAW_FIX_ARM__*/
+
+
+			{
+			
 
 				do_control();
-
 				/* fill local position, velocity and thrust setpoint */
 				_local_pos_sp.timestamp = hrt_absolute_time();
 				_local_pos_sp.x = _pos_sp(0);
@@ -3380,6 +3445,7 @@ MulticopterPositionControl::publish_attitude()
 	 * attitude setpoints for the transition).
 	 * - if not armed
 	 */
+	 
 	if (_control_mode.flag_armed &&
 	    (!(_control_mode.flag_control_offboard_enabled &&
 	       !(_control_mode.flag_control_position_enabled ||
@@ -3387,6 +3453,7 @@ MulticopterPositionControl::publish_attitude()
 		 _control_mode.flag_control_acceleration_enabled)))) {
 
 		_att_sp.timestamp = hrt_absolute_time();
+
 
 		if (_att_sp_pub != nullptr) {
 			orb_publish(_attitude_setpoint_id, _att_sp_pub, &_att_sp);

@@ -2320,7 +2320,11 @@ Commander::run()
 			 * check if left stick is in lower left position or arm button is pushed or arm switch has transition from arm to disarm
 			 * and we are in MANUAL, Rattitude, or AUTO_READY mode or (ASSIST mode and landed)
 			 * do it only for rotary wings in manual mode or fixed wing if landed */
+#if __DAVID_ARMED_FIX1__
+			const bool stick_in_lower_left = sp_man.z < 0.1f;
+#else			 
 			const bool stick_in_lower_left = sp_man.r < -STICK_ON_OFF_LIMIT && sp_man.z < 0.1f;
+#endif/*__DAVID_ARMED_FIX1__*/
 			const bool arm_switch_to_disarm_transition =  arm_switch_is_button == 0 &&
 					_last_sp_man_arm_switch == manual_control_setpoint_s::SWITCH_POS_ON &&
 					sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_OFF;
@@ -2359,11 +2363,7 @@ Commander::run()
 			/* ARM
 			 * check if left stick is in lower right position or arm button is pushed or arm switch has transition from disarm to arm
 			 * and we're in MANUAL mode */
-#if __DAVID_ARMED_FIX1__
-			const bool stick_in_lower_right = sp_man.z < 0.1f;
-#else
 			const bool stick_in_lower_right = (sp_man.r > STICK_ON_OFF_LIMIT && sp_man.z < 0.1f);
-#endif/*__DAVID_ARMED_FIX1__*/			
 			const bool arm_switch_to_arm_transition = arm_switch_is_button == 0 &&
 					_last_sp_man_arm_switch == manual_control_setpoint_s::SWITCH_POS_OFF &&
 					sp_man.arm_switch == manual_control_setpoint_s::SWITCH_POS_ON;
@@ -2881,7 +2881,12 @@ Commander::run()
 void
 get_circuit_breaker_params()
 {
+#if __DAVID_CHECKBATTERY__
+	status_flags.circuit_breaker_engaged_power_check = true;
+
+#else
 	status_flags.circuit_breaker_engaged_power_check = circuit_breaker_enabled("CBRK_SUPPLY_CHK", CBRK_SUPPLY_CHK_KEY);
+#endif/*__DAVID_CHECKBATTERY__*/
 	status_flags.circuit_breaker_engaged_usb_check = circuit_breaker_enabled("CBRK_USB_CHK", CBRK_USB_CHK_KEY);
 	status_flags.circuit_breaker_engaged_airspd_check = circuit_breaker_enabled("CBRK_AIRSPD_CHK", CBRK_AIRSPD_CHK_KEY);
 	status_flags.circuit_breaker_engaged_enginefailure_check = circuit_breaker_enabled("CBRK_ENGINEFAIL", CBRK_ENGINEFAIL_KEY);
@@ -3551,8 +3556,10 @@ set_control_mode()
 		control_mode.flag_control_rates_enabled = true;
 		control_mode.flag_control_attitude_enabled = true;
 		control_mode.flag_control_rattitude_enabled = false;
+//		control_mode.flag_control_altitude_enabled = true;
+//		control_mode.flag_control_climb_rate_enabled = true;
 		control_mode.flag_control_altitude_enabled = false;
-		control_mode.flag_control_climb_rate_enabled = false;
+		control_mode.flag_control_climb_rate_enabled = false;			
 		control_mode.flag_control_position_enabled = false;
 		control_mode.flag_control_velocity_enabled = false;
 		control_mode.flag_control_acceleration_enabled = false;
@@ -3609,17 +3616,17 @@ set_control_mode()
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
-		control_mode.flag_control_manual_enabled = true;
-		control_mode.flag_control_auto_enabled = false;
-		control_mode.flag_control_rates_enabled = true;
-		control_mode.flag_control_attitude_enabled = true;
-		control_mode.flag_control_rattitude_enabled = false;
-		control_mode.flag_control_altitude_enabled = true;
-		control_mode.flag_control_climb_rate_enabled = true;
-		control_mode.flag_control_position_enabled = false;
-		control_mode.flag_control_velocity_enabled = false;
-		control_mode.flag_control_acceleration_enabled = false;
-		control_mode.flag_control_termination_enabled = false;
+			control_mode.flag_control_manual_enabled = true;
+			control_mode.flag_control_auto_enabled = false;
+			control_mode.flag_control_rates_enabled = true;
+			control_mode.flag_control_attitude_enabled = true;
+			control_mode.flag_control_rattitude_enabled = false;
+			control_mode.flag_control_altitude_enabled = true;
+			control_mode.flag_control_climb_rate_enabled = true;
+			control_mode.flag_control_position_enabled = false;
+			control_mode.flag_control_velocity_enabled = false;
+			control_mode.flag_control_acceleration_enabled = false;
+			control_mode.flag_control_termination_enabled = false;
 	
 		break;
 

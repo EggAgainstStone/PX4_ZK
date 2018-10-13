@@ -432,36 +432,6 @@ PARAM_DEFINE_INT32(SENSOR_ID_UP, 2);
 #endif/*__DAVID_DISTANCE__*/
 #if __DAVID_CHAO_WARING__
 /**
- * to select forward id of ultrasonic
- *
- * the sensor id to use
- *
- * @group ZHIKUN
- * @min -255
- * @max 255
- */
-PARAM_DEFINE_INT32(SONAR_ID_F, 0);
-/**
- * to select backward id of ultrasonic
- *
- * the sensor id to use
- *
- * @group ZHIKUN
- * @min -255
- * @max 255
- */
-PARAM_DEFINE_INT32(SONAR_ID_B, 1);
-/**
- * to select downward id of ultrasonic
- *
- * the sensor id to use
- *
- * @group ZHIKUN
- * @min -255
- * @max 255
- */
-PARAM_DEFINE_INT32(SONAR_ID_D, 3);
-/**
  * to count_warning
  *
  * the count wanrning
@@ -473,9 +443,9 @@ PARAM_DEFINE_INT32(SONAR_ID_D, 3);
 PARAM_DEFINE_INT32(COUNT_WARN, 255);
 
 /**
- * ultra_sonar warning distance
+ * ultra_sonar warning distance yuan
  *
- * ultra_sonar warning distance
+ * ultra_sonar warning distance yuan
  *
  * @group ZHIKUN
  * @unit meter
@@ -483,7 +453,20 @@ PARAM_DEFINE_INT32(COUNT_WARN, 255);
  * @max 5
  * @decimal 2
  */
-PARAM_DEFINE_FLOAT(WARN_DIS, 4.0f);
+PARAM_DEFINE_FLOAT(WARN_DIS_Y, 4.0f);
+/**
+ * ultra_sonar warning distance jin
+ *
+ * ultra_sonar warning distance jin
+ *
+ * @group ZHIKUN
+ * @unit meter
+ * @min 0
+ * @max 5
+ * @decimal 2
+ */
+PARAM_DEFINE_FLOAT(WARN_DIS_J, 1.0f);
+
 #endif/*__DAVID_CHAO_WARING__*/
 
 

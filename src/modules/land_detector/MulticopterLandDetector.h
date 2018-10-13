@@ -56,7 +56,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_local_position.h>
-
+#include "qiaoliang/qiaoliang_define.h"
 using namespace time_literals;
 
 namespace land_detector

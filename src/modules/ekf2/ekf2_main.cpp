@@ -70,6 +70,7 @@
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_magnetometer.h>
+#include "qiaoliang/qiaoliang_define.h"
 
 using math::constrain;
 

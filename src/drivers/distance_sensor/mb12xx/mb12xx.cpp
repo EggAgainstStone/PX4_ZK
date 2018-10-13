@@ -76,6 +76,8 @@
 #define MB12XX_BUS  		PX4_I2C_BUS_EXPANSION
 #define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
 #define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
+//#define MB12XX_BASEADDR 	0x68 /* 7-bit address. 8-bit address is 0xE0 */
+
 #define MB12XX_DEVICE_PATH	"/dev/mb12xx"
 
 /* MB12xx Registers addresses */
@@ -93,7 +95,7 @@
 #define MB12XX_MAX_DISTANCE 	(4.5f)
 
 #define MB12XX_CONVERSION_INTERVAL 	    100000 /* 60ms for one sonar */
-#define TICKS_BETWEEN_SUCCESIVE_FIRES 	40000 /* 30ms between each sonar measurement (watch out for interference!) */
+#define TICKS_BETWEEN_SUCCESIVE_FIRES 	90000 /* 30ms between each sonar measurement (watch out for interference!) */
 
 
 #if __DISTANCE_FILTER__
@@ -135,7 +137,7 @@ static const uint8_t g_slave_addr[MB12XX_MAX_RANGEFINDERS] = {0x74,0x68,0x69,0x6
 static const uint8_t g_id_addr_map[MB12XX_MAX_RANGEFINDERS][MB12XX_MAX_RANGEFINDERS] =
 {
     {SENSOR_POINT_FRONT,0x74},{SENSOR_POINT_BACK,0x68},{SENSOR_POINT_UP,0x69},{SENSOR_POINT_DOWN,0x6a},
-     {SENSOR_POINT_FRONT2,0xd2},{SENSOR_POINT_BACK2,0xd3},{SENSOR_POINT_LEFT2,0xd4},{SENSOR_POINT_RIGHT2,0xd6}
+     {SENSOR_POINT_FRONT2,0xe8},{SENSOR_POINT_BACK2,0xd0},{SENSOR_POINT_LEFT2,0xd2},{SENSOR_POINT_RIGHT2,0xd6}
 
 };
 
@@ -329,6 +331,9 @@ MB12XX::init()
 	if (I2C::init() != OK) {
 		return ret;
 	}
+#if __DISTANCE_KS103__
+	_orb_class_instance = 0;
+#endif/*__DISTANCE_KS103__*/
 
 	////////////////////////////////////////////////////////
 //    //      change address is ok!!
@@ -376,7 +381,7 @@ MB12XX::init()
 
 		set_device_address(_index_counter);			/* set I2c port to temp sonar i2c adress */
 
-//		PX4_ZK("MB12XX -----sonar close_scl_low  _index_counter %d",_index_counter);
+		//PX4_ZK("MB12XX -----sonar close_scl_low  _index_counter %d",_index_counter);
 
 #if __DISTANCE_KS103__
 		int ret2 = close_scl_low();
@@ -980,8 +985,7 @@ MB12XX::collect()
 	report.covariance = 0.0f;
 	report.id = _sonar_id;
 	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
-//	PX4_ZK("_sonar_id %d",_sonar_id);
-
+//PX4_ZK("_curent_distance %.2f,report.id %d",(double)_curent_distance,report.id);
 	switch(_sonar_id){
 		case 0:
 			//PX4_ZK("ROTATION_FORWARD_FACING");
@@ -1041,7 +1045,10 @@ MB12XX::collect()
 	if (_distance_sensor_topic != nullptr) {
 		
 	//	PX4_ZK("mb12xx-distance_m--aa %.2f",(double)distance_m);
-		orb_publish(ORB_ID(distance_sensor), _distance_sensor_topic, &report);
+	//	orb_publish(ORB_ID(distance_sensor), _distance_sensor_topic, &report);
+
+		orb_publish_auto(ORB_ID(distance_sensor), &_distance_sensor_topic, &report,&_orb_class_instance, ORB_PRIO_LOW);
+	
 	}
 
 	_reports->force(&report);

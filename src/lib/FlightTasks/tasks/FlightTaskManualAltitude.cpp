@@ -37,6 +37,7 @@
 
 #include "FlightTaskManualAltitude.hpp"
 #include <float.h>
+#include "qiaoliang/qiaoliang_define.h"
 
 using namespace matrix;
 

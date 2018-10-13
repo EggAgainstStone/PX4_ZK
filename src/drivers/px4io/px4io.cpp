@@ -1870,7 +1870,6 @@ PX4IO::io_publish_raw_rc()
 			return OK;
 		}
 	}
-
 	/* lazily advertise on first publication */
 	if (_to_input_rc == nullptr) {
 		_to_input_rc = orb_advertise(ORB_ID(input_rc), &rc_val);
