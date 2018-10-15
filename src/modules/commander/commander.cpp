@@ -3295,7 +3295,7 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 		
 #if __DAVID_DISTANCE_FIX__
 
-			switch(sp_man.posctl_switch){
+			switch(sp_man.loiter_switch){
 				
 				case manual_control_setpoint_s::SWITCH_POS_OFF: 
 					PX4_ZK("MANUAL OK");

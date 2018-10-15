@@ -496,7 +496,7 @@ BATT_SERIAL::task_main()
 												_report_battery_status.warning = battery_status_s::BATTERY_WARNING_EMERGENCY;
 											}
 
-											PX4_INFO("power %.7f _batt_type %d",(double)_power,_batt_type);
+											PX4_ZK("power %.7f _batt_type %d",(double)_power,_batt_type);
 
 				                            if(_report_battery_status_pub !=nullptr){
 											

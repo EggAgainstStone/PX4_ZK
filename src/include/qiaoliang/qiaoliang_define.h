@@ -20,6 +20,7 @@
 
 #define __DISTANCE_KS103__ 				    	(1)//to change mb12xx to ks103
 #define __DISTANCE_FILTER__ 					(1)//to filter the up-ultrasonic data
+#define __PX4FMU_V3__							(0)//v3 --i2c2 config
 
 #define __DAVID_YAW_FIX__  						(1)//to fix the yaw bug
 #define __ARMED_FIX_1__  						(1)//to lock the stick value when disarming plane
@@ -30,11 +31,11 @@
 #define __DAVID_DISTANCE_TMP__                  (1)//chaoshengbo control height
 
 #define __BATT_POWER_BRICK__ 					(1)//to fix the power2 problem
-#define __DAVID_ARMED_FIX1__                    (0)//add armed status
-#define __DAVID_ARMED_FIX2__                    (0)//add armed status
+#define __DAVID_CHECKBATTERY__					(1)//to fix the low power not to arm plane problem
+
 #define __DAVID_CHAO_WARING__                   (0)//chaoshengbo front back low and 
+#define __DAVID_ARMED_FIX1__                    (0)//to fix the disarm the plane the stick is left and down problem
 #define __DAVID_YAW_FIX_ARM__					(0)
-#define __DAVID_CHECKBATTERY__					(1)
 
 
 

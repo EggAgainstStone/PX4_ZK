@@ -73,7 +73,13 @@
 #include "qiaoliang/qiaoliang_define.h"
 
 /* Configuration Constants */
+#if __PX4FMU_V3__
+#define MB12XX_BUS  		PX4_I2C_BUS_ONBOARD
+
+#else
 #define MB12XX_BUS  		PX4_I2C_BUS_EXPANSION
+
+#endif/*__PX4FMU_V3__*/
 #define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
 #define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
 //#define MB12XX_BASEADDR 	0x68 /* 7-bit address. 8-bit address is 0xE0 */
@@ -92,10 +98,10 @@
 
 /* Device limits */
 #define MB12XX_MIN_DISTANCE 	(0.20f)
-#define MB12XX_MAX_DISTANCE 	(4.5f)
+#define MB12XX_MAX_DISTANCE 	(4.0f)
 
 #define MB12XX_CONVERSION_INTERVAL 	    100000 /* 60ms for one sonar */
-#define TICKS_BETWEEN_SUCCESIVE_FIRES 	90000 /* 30ms between each sonar measurement (watch out for interference!) */
+#define TICKS_BETWEEN_SUCCESIVE_FIRES 	100000 /* 30ms between each sonar measurement (watch out for interference!) */
 
 
 #if __DISTANCE_FILTER__
@@ -120,6 +126,12 @@ static float filter_sonic_1 = 0;
 static float filter_sonic_3 = 0;
 #endif/*__DISTANCE_FILTER__*/
 
+static float mb12xx_front_dis = 0;
+static float mb12xx_back_dis = 0;
+static float mb12xx_up_dis = 0;
+
+
+//static int nnnnn =0;
 #if __DISTANCE_KS103__
 
 #define SENSOR_POINT_FRONT  (0)
@@ -408,7 +420,7 @@ MB12XX::init()
 
 	/* show the connected sonars in terminal */
 	for (unsigned ki = 0; ki < addr_ind.size(); ki++) {
-		DEVICE_LOG("sonar %d with address %d added", (ki + 1), addr_ind[ki]);
+		DEVICE_LOG("sonar %d with address %x added", (ki + 1), addr_ind[ki]);
 	}
 
 	DEVICE_DEBUG("Number of sonars connected: %lu", addr_ind.size());
@@ -417,13 +429,27 @@ MB12XX::init()
 	/* sensor is ok, but we don't really know if it is within range */
 	_sensor_ok = true;
 
-
-	
+	int ok;
 	uint8_t cmd[2] = {2,0xbc};
-	int ok = transfer(&cmd[0],2,nullptr,0);
-	if(OK != ok)
-		printf("LSK : %d", ok);
+	//int ok = transfer(&cmd[0],2,nullptr,0);
+		ok = LSK_transfer(0x68 , &cmd[0], 2);
+	sleep(2);
+		ok &= LSK_transfer(0x69, &cmd[0], 2);
+	sleep(2);
+		ok &= LSK_transfer(0x74 , &cmd[0], 2);
+	sleep(2);
 
+
+	uint8_t cmd2[2] = {2, 0x72};
+		ok &= LSK_transfer(0x68, &cmd2[0], 2);
+	sleep(2);
+		ok &= LSK_transfer(0x69, &cmd2[0], 2);
+	sleep(2);
+		ok &= LSK_transfer(0x74, &cmd2[0], 2);
+	sleep(2);
+
+	if(OK != ok )
+		DEVICE_DEBUG("mb12xx init ok LSK!");
 
 	return ret;
 }
@@ -845,7 +871,7 @@ MB12XX::collect()
     /* read from the sensor */
     uint8_t val[2] = {0, 0};
     uint8_t cmd = 0;
-    cmd = 2;
+    cmd = 0x2;
     ret = transfer(&cmd, 1,nullptr,0);
     if (ret < 0) {
         DEVICE_DEBUG("error send read command: %d", ret);
@@ -985,7 +1011,19 @@ MB12XX::collect()
 	report.covariance = 0.0f;
 	report.id = _sonar_id;
 	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
-//PX4_ZK("_curent_distance %.2f,report.id %d",(double)_curent_distance,report.id);
+
+	if(_sonar_id == 0){
+		mb12xx_front_dis = _curent_distance;
+	}
+	if(_sonar_id == 1){
+		mb12xx_back_dis = _curent_distance;
+	}
+	if(_sonar_id == 2){
+		mb12xx_up_dis = _curent_distance;
+	}
+PX4_ZK("mb12xx_front_dis %.2f,mb12xx_back_dis %.2f mb12xx_up_dis %.2f",(double)mb12xx_front_dis,(double)mb12xx_back_dis,(double)mb12xx_up_dis);
+//if(report.id == 0)
+//printf("_curent_distance %.2f,report.id %d  \n ",(double)_curent_distance,report.id);
 	switch(_sonar_id){
 		case 0:
 			//PX4_ZK("ROTATION_FORWARD_FACING");
@@ -1018,6 +1056,18 @@ MB12XX::collect()
 //	uint8 ROTATION_LEFT_FACING	   = 6	# MAV_SENSOR_ROTATION_YAW_270
 //	uint8 ROTATION_RIGHT_FACING    = 2	# MAV_SENSOR_ROTATION_YAW_90
 
+//if(report.id ==1){
+//	if(nnnnn ==1){	PX4_ZK("-------curent_distance %.2f,id %d ",(double)_curent_distance,report.id);}
+
+//}
+//if(report.id ==0){
+//	if(nnnnn ==1){
+//		PX4_ZK("_curent_distance %.2f,report.id %d ",(double)_curent_distance,report.id);
+//		nnnnn = 0;
+//	}else{
+//		nnnnn++;
+//	}
+//}
 
 #else/*__DISTANCE_KS103__*/	
 	uint8_t val[2] = {0, 0};
@@ -1048,7 +1098,6 @@ MB12XX::collect()
 	//	orb_publish(ORB_ID(distance_sensor), _distance_sensor_topic, &report);
 
 		orb_publish_auto(ORB_ID(distance_sensor), &_distance_sensor_topic, &report,&_orb_class_instance, ORB_PRIO_LOW);
-	
 	}
 
 	_reports->force(&report);

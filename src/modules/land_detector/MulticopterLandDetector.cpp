@@ -172,13 +172,15 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 		// Widen acceptance thresholds for landed state right after arming
 		// so that motor spool-up and other effects do not trigger false negatives.
 		verticalMovement = fabsf(_vehicleLocalPosition.vz) > _params.maxClimbRate  * 2.5f;
-
+//PX4_ZK("-aa-verticalMovement %d _vehicleLocalPosition.vz %.2f",verticalMovement,(double)_vehicleLocalPosition.vz);
 	} else {
 
 		// Adjust maxClimbRate if land_speed is lower than 2x maxClimbrate
 		float maxClimbRate = ((land_speed_threshold * 0.5f) < _params.maxClimbRate) ? (0.5f * land_speed_threshold) :
 				     _params.maxClimbRate;
 		verticalMovement = fabsf(_vehicleLocalPosition.z_deriv) > maxClimbRate;
+		
+//PX4_ZK("-bb-verticalMovement %d _vehicleLocalPosition.vz %.2f",verticalMovement,(double)_vehicleLocalPosition.z_deriv);
 	}
 
 	// Check if we are moving horizontally.
@@ -241,7 +243,6 @@ bool MulticopterLandDetector::_get_maybe_landed_state()
 		// quite acrobatic flight.
 		return (_min_trust_start > 0) && (hrt_elapsed_time(&_min_trust_start) > 8_s);
 	}
-
 	if (_ground_contact_hysteresis.get_state() && _has_minimal_thrust() && !rotating) {
 		// Ground contact, no thrust and no movement -> landed
 		return true;

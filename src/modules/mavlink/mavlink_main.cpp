@@ -84,7 +84,7 @@
 #include "mavlink_receiver.h"
 #include "mavlink_rate_limiter.h"
 #include "mavlink_command_sender.h"
-
+#include "qiaoliang/qiaoliang_define.h"
 // Guard against MAVLink misconfiguration
 #ifndef MAVLINK_CRC_EXTRA
 #error MAVLINK_CRC_EXTRA has to be defined on PX4 systems
@@ -2011,7 +2011,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("COLLISION");
 		configure_stream("DEBUG", 1.0f);
 		configure_stream("DEBUG_VECT", 1.0f);
-		configure_stream("DISTANCE_SENSOR", 0.5f);
+		configure_stream("DISTANCE_SENSOR", 4.0f);
 		configure_stream("ESTIMATOR_STATUS", 0.5f);
 		configure_stream("EXTENDED_SYS_STATE", 1.0f);
 		configure_stream("GLOBAL_POSITION_INT", 5.0f);

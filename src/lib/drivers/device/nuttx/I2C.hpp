@@ -99,6 +99,8 @@ protected:
 	 */
 	int		transfer(const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned recv_len);
 
+	int 		LSK_transfer(uint8_t address, const uint8_t *send, unsigned send_len); // add by li shan kang
+
 	bool		external() { return px4_i2c_bus_external(_device_id.devid_s.bus); }
 
 private:

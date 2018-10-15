@@ -3581,7 +3581,8 @@ protected:
 			msg.current_distance = dist_sensor.current_distance * 100.0f; /* m to cm */
 			msg.covariance = dist_sensor.covariance;
 			msg.id = dist_sensor.id;
-//PX4_ZK("msg.current_distance %d  dist_sensor.id %d",msg.current_distance,dist_sensor.id);
+			msg.orientation = dist_sensor.orientation;
+
 			mavlink_msg_distance_sensor_send_struct(_mavlink->get_channel(), &msg);
 
 			return true;

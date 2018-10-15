@@ -49,6 +49,14 @@ int BlockLocalPositionEstimator::sonarMeasure(Vector<float, n_y_sonar> &y)
 {
 // measure
 #if __DAVID_DISTANCE__
+//uint8 orientation		# Direction the sensor faces from MAV_SENSOR_ORIENTATION enum
+//uint8 ROTATION_DOWNWARD_FACING = 25 # MAV_SENSOR_ROTATION_PITCH_270
+//uint8 ROTATION_UPWARD_FACING   = 24 # MAV_SENSOR_ROTATION_PITCH_90
+//uint8 ROTATION_BACKWARD_FACING = 12 # MAV_SENSOR_ROTATION_PITCH_180
+//uint8 ROTATION_FORWARD_FACING  = 0  # MAV_SENSOR_ROTATION_NONE
+//uint8 ROTATION_LEFT_FACING     = 6  # MAV_SENSOR_ROTATION_YAW_270
+//uint8 ROTATION_RIGHT_FACING    = 2  # MAV_SENSOR_ROTATION_YAW_90
+
 	float d = - _sub_sonar->get().current_distance;
 //	PX4_ZK("distance_sensor_s::ROTATION_UPWARD_FACING %.2f",(double)d);
 
@@ -61,7 +69,7 @@ int BlockLocalPositionEstimator::sonarMeasure(Vector<float, n_y_sonar> &y)
 	float min_dist = _sub_sonar->get().min_distance + eps;
 #if __DAVID_DISTANCE__
 	float max_dist = _sonar_max_switch.get();
-//PX4_ZK("_sonar_max_switch.get() %.2f",(double)_sonar_max_switch.get());
+
 #else/* __DAVID_DISTANCE__*/
 	float max_dist = _sub_sonar->get().max_distance - eps;
 #endif/* __DAVID_DISTANCE__*/
@@ -90,9 +98,7 @@ int BlockLocalPositionEstimator::sonarMeasure(Vector<float, n_y_sonar> &y)
 	y(0) = (d + _sonar_z_offset.get()) *
 	       cosf(_eul(0)) *
 	       cosf(_eul(1));
-
 	
-//	PX4_ZK("current_distance y(0) %.2f",(double)y(0));
 	return OK;
 }
 

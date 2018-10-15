@@ -90,6 +90,16 @@
 
 #define SIGMA_SINGLE_OP			0.000001f
 #define SIGMA_NORM			0.001f
+
+#if	__DAVID_CHAO_WARING__
+
+static float xx=0.0f;
+static float yy=0.0f;
+#endif/*	__DAVID_CHAO_WARING__*/
+
+//static int nnnn=0;
+//static int bbbb=0;
+
 /**
  * Multicopter position control app start / stop handling function
  *
@@ -323,8 +333,11 @@ private:
 #if	__DAVID_CHAO_WARING__
 	float _current_distance_front;
 	float _current_distance_back;
+	float _max_distance;
 	float _manual_x_tmp;
-#endif/*__DAVID_CHAO_WARING__*/
+	float _manual_y_tmp;	
+#endif/*__DAVID_CHAO_WARING__*/	
+
 	float _vel_max_xy;  /**< equal to vel_max except in auto mode when close to target */
 	bool _vel_sp_significant; /** true when the velocity setpoint is over 50% of the _vel_max_xy limit */
 	float _acceleration_state_dependent_xy; /**< acceleration limit applied in manual mode */
@@ -2920,11 +2933,13 @@ MulticopterPositionControl::generate_attitude_setpoint()
 		 * points to, and changes of the stick input are linear.
 		 */
 #if  __DAVID_CHAO_WARING__
+
+	if(_manual.loiter_switch==1){
 		if(_manual.x>0){
        		 if(_current_distance_front>warn_dis_jin.get()) 
 			 {
 			    float ratio_front = math::constrain((_current_distance_front - warn_dis_jin.get())/(warn_dis_yuan.get()-warn_dis_jin.get()),0.0f,1.0f);
-//   PX4_ZK("ratio_front %.2f _current_distance_front %.2f",(double)ratio_front,(double)_current_distance_front);
+  		//		PX4_ZK("ratio_front %.2f _current_distance_front %.2f",(double)ratio_front,(double)_current_distance_front);
 				_manual_x_tmp= _manual.x * ratio_front;
 			 }else{
 				_manual_x_tmp= 0;
@@ -2933,17 +2948,40 @@ MulticopterPositionControl::generate_attitude_setpoint()
 		     if(_current_distance_back>warn_dis_jin.get()) 
 		     {
 				float ratio_back = math::constrain((_current_distance_back - warn_dis_jin.get())/(warn_dis_yuan.get()-warn_dis_jin.get()),0.0f,1.0f);
-			//	PX4_ZK("ratio_back %.2f _current_distance_back %.2f",(double)ratio_back,(double)_current_distance_back);
+				//PX4_ZK("ratio_back %.2f _current_distance_back %.2f",(double)ratio_back,(double)_current_distance_back);
 				_manual_x_tmp= _manual.x * ratio_back;
-		    }else{
+		    	}else{
 				_manual_x_tmp= 0;
 			}
 		}
-//		PX4_ZK("_manual X %.2f _manual_x_tmp %.2f",(double)_manual.x,(double)_manual_x_tmp);
 
-		const float x = _manual_x_tmp * _man_tilt_max;
-	    const float y = _manual.y * _man_tilt_max;
+			 xx = _manual_x_tmp * _man_tilt_max;
+		     yy = _manual.y * _man_tilt_max;
+//if(nnnn==50){
+//			 PX4_ZK("-A- front %.2f back %.2f  xx  %.2f _manual_x_tmp %.2f ",(double)_current_distance_front,(double)_current_distance_back,(double)xx,(double)_manual_x_tmp,(double)_manual.y );
+//	nnnn=0;
+//}else{
+//	nnnn++;
 
+//}
+		}else{
+		
+			 xx = _manual.x * _man_tilt_max;
+			 yy = _manual.y * _man_tilt_max;
+			 
+// if(bbbb==50){
+//	 PX4_ZK("-B- front %.2f back %.2f  xx  %.2f _manual_x_tmp %.2f ",(double)_current_distance_front,(double)_current_distance_back,(double)xx,(double)_manual_x_tmp,(double)_manual.y );
+//	bbbb=0;
+// }else{
+//	bbbb++;
+//}
+
+		}
+			const float x = xx;
+			const float y = yy;
+
+
+			
 #else/*__DAVID_CHAO_WARING__*/
 
 		const float x = _manual.x * _man_tilt_max;

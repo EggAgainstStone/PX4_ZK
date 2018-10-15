@@ -19,6 +19,8 @@ static const float LAND_RATE = 10.0f;	// rate of land detector correction
 
 static const char *msg_label = "[lpe] ";	// rate of land detector correction
 
+static int nnnn=0;
+
 BlockLocalPositionEstimator::BlockLocalPositionEstimator() :
 	// this block has no parent, and has name LPE
 	SuperBlock(nullptr, "LPE"),
@@ -452,13 +454,25 @@ void BlockLocalPositionEstimator::update()
 		}
 	}
 #if __DAVID_DISTANCE_TMP__
-
-if(_sub_vehicle_status.get().distance_sensor_ok&&(_sub_manual_control_setpoint.get().posctl_switch==1))
+//PX4_ZK("distance_sensor_ok %d loiter_switch %d",_sub_vehicle_status.get().distance_sensor_ok,_sub_manual_control_setpoint.get().loiter_switch);
+if(_sub_vehicle_status.get().distance_sensor_ok&&(_sub_manual_control_setpoint.get().loiter_switch==5))
 {	
-	if (_sonarUpdated) {
+	//PX4_ZK("_sonarUpdated %d orientation %d",_sonarUpdated,_sub_sonar->get().orientation);
+
+	if (_sonarUpdated && (_sub_sonar->get().orientation==distance_sensor_s::ROTATION_UPWARD_FACING)) {
+		
 		if (_sensorTimeout & SENSOR_SONAR) {
 			sonarInit();
+			
 		} else {
+
+			if(nnnn ==10){
+				PX4_ZK("sonarCorrect");
+				nnnn =0;
+			}else{
+				nnnn++;
+			}
+		
 			sonarCorrect();
 		}
 	}

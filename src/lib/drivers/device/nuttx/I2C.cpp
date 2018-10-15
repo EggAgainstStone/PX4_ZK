@@ -200,7 +200,6 @@ I2C::transfer(const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned re
 			msgv[msgs].length = recv_len;
 			msgs++;
 		}
-
 		if (msgs == 0) {
 			return -EINVAL;
 		}
@@ -221,5 +220,65 @@ I2C::transfer(const uint8_t *send, unsigned send_len, uint8_t *recv, unsigned re
 
 	return ret;
 }
+ int 
+ I2C::LSK_transfer(uint8_t address, const uint8_t * send, unsigned send_len)
+ {
+ 	// add by li shan kang
+ 	uint8_t *recv = nullptr;
+	unsigned recv_len = 0;
+	// add by li shan kang
+	
+ 	px4_i2c_msg_t msgv[2];
+	unsigned msgs;
+	int ret = PX4_ERROR;
+	unsigned retry_count = 0;
 
+	if (_dev == nullptr) {
+		PX4_ERR("I2C device not opened");
+		return 1;
+	}
+
+	do {
+		DEVICE_DEBUG("transfer out %p/%u  in %p/%u", send, send_len, recv, recv_len);
+		msgs = 0;
+
+		if (send_len > 0) {
+			msgv[msgs].frequency = _bus_clocks[get_device_bus() - 1];
+			msgv[msgs].addr = address;
+			msgv[msgs].flags = 0;
+			msgv[msgs].buffer = const_cast<uint8_t *>(send);
+			msgv[msgs].length = send_len;
+			msgs++;
+		}
+
+		if (recv_len > 0) {
+			msgv[msgs].frequency = _bus_clocks[get_device_bus() - 1];
+			msgv[msgs].addr = address;
+			msgv[msgs].flags = I2C_M_READ;
+			msgv[msgs].buffer = recv;
+			msgv[msgs].length = recv_len;
+			msgs++;
+		}
+
+		if (msgs == 0) {
+			return -EINVAL;
+		}
+
+		ret = I2C_TRANSFER(_dev, &msgv[0], msgs);
+
+		/* success */
+		if (ret == PX4_OK) {
+			break;
+		}
+
+		/* if we have already retried once, or we are going to give up, then reset the bus */
+		if ((retry_count >= 1) || (retry_count >= _retries)) {
+			I2C_RESET(_dev);
+		}
+
+	} while (retry_count++ < _retries);
+
+	return ret;
+ }
+ 
 } // namespace device
