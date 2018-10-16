@@ -58,7 +58,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_magnetometer.h>
-#include "qiaoliang/qiaoliang_define.h"
+
 extern "C" __EXPORT int attitude_estimator_q_main(int argc, char *argv[]);
 
 using matrix::Dcmf;
@@ -292,10 +292,8 @@ void AttitudeEstimatorQ::task_main()
 		}
 
 		update_parameters(false);
-
 		// Update sensors
 		sensor_combined_s sensors;
-
 		if (orb_copy(ORB_ID(sensor_combined), _sensors_sub, &sensors) == PX4_OK) {
 			// Feed validator with recent sensor data
 

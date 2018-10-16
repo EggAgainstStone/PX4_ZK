@@ -430,18 +430,9 @@ MB12XX::init()
 	_sensor_ok = true;
 
 	int ok;
-	uint8_t cmd[2] = {2,0xbc};
-	//int ok = transfer(&cmd[0],2,nullptr,0);
-		ok = LSK_transfer(0x68 , &cmd[0], 2);
-	sleep(2);
-		ok &= LSK_transfer(0x69, &cmd[0], 2);
-	sleep(2);
-		ok &= LSK_transfer(0x74 , &cmd[0], 2);
-	sleep(2);
 
-
-	uint8_t cmd2[2] = {2, 0x72};
-		ok &= LSK_transfer(0x68, &cmd2[0], 2);
+	uint8_t cmd2[2] = {2, 0x75};
+		ok = LSK_transfer(0x68, &cmd2[0], 2);
 	sleep(2);
 		ok &= LSK_transfer(0x69, &cmd2[0], 2);
 	sleep(2);
