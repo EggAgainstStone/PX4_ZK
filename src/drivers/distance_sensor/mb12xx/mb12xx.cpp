@@ -75,14 +75,15 @@
 /* Configuration Constants */
 #if __PX4FMU_V3__
 #define MB12XX_BUS  		PX4_I2C_BUS_ONBOARD
-
 #else
 #define MB12XX_BUS  		PX4_I2C_BUS_EXPANSION
-
 #endif/*__PX4FMU_V3__*/
-#define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
-#define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
-//#define MB12XX_BASEADDR 	0x68 /* 7-bit address. 8-bit address is 0xE0 */
+
+
+//#define MB12XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
+//#define MB12XX_BASEADDR 	0x74 /* 7-bit address. 8-bit address is 0xE0 */
+#define MB12XX_BASEADDR 	0x68 /* 7-bit address. 8-bit address is 0d0 */
+//#define MB12XX_BASEADDR 	0x69 /* 7-bit address. 8-bit address is 0d2 */
 
 #define MB12XX_DEVICE_PATH	"/dev/mb12xx"
 
@@ -348,11 +349,25 @@ MB12XX::init()
 #endif/*__DISTANCE_KS103__*/
 
 	////////////////////////////////////////////////////////
-//    //      change address is ok!!
-//            uint8_t newaddr =0xd2;
+	
+			//uint8_t cmd1[2] = {0x02,0xc3};
+			//bool enable_a= _index_counter == 0x74;
+			//bool enable_b= _index_counter == 0x69;
+			//bool enable_c= _index_counter == 0x68;
+			//PX4_ZK("_index_counter %x",_index_counter);
+			//if( enable_a||enable_b||enable_c){
+				//ret = transfer(&cmd2[0], 2,nullptr, 0);
+				//    //      change address is ok!!
+//            uint8_t newaddr =0x9;
 //			ret =change_address(newaddr);
-//			PX4_ZK("change adress is ret %d",ret) ;
-//			return ret;
+		//	PX4_ZK("change adress is ret %d______________________________",ret) ;
+			//return ret;
+			//}else{
+			//	ret = transfer(&cmd1[0], 2,nullptr, 0);
+			//}
+
+
+
 	///////////////////////////////////////////////////////
 
 
@@ -385,22 +400,11 @@ MB12XX::init()
 	   We start from i2c base address (0x70 = 112) and count downwards
 	   So second iteration it uses i2c address 111, third iteration 110 and so on*/
 	for (unsigned counter = 0; counter < MB12XX_MAX_RANGEFINDERS; counter++) {
-#if __DISTANCE_KS103__
 		_index_counter = g_slave_addr[counter]; /* set temp sonar i2c address to base adress - counter */
-#else/*__DISTANCE_KS103__*/
-		_index_counter = MB12XX_BASEADDR - counter;	/* set temp sonar i2c address to base adress - counter */
-#endif/*__DISTANCE_KS103__*/
-
 		set_device_address(_index_counter);			/* set I2c port to temp sonar i2c adress */
 
-		//PX4_ZK("MB12XX -----sonar close_scl_low  _index_counter %d",_index_counter);
-
-#if __DISTANCE_KS103__
 		int ret2 = close_scl_low();
 
-#else/*__DISTANCE_KS103__*/
-		int ret2 = measure();
-#endif/*__DISTANCE_KS103__*/
 		if (ret2 == 0) { /* sonar is present -> store address_index in array */
 			addr_ind.push_back(_index_counter);
 			DEVICE_DEBUG("sonar added");
@@ -448,11 +452,8 @@ MB12XX::init()
 int
 MB12XX::probe()
 {
-#if __DISTANCE_KS103__
+
     return OK;
-#else/*__DISTANCE_KS103__*/
-	return measure();
-#endif/*__DISTANCE_KS103__*/
 }
 
 void
@@ -708,7 +709,7 @@ MB12XX::change_address(uint8_t newaddr)
 int
 MB12XX::close_scl_low()
 {
-
+//printf("Start test ________ %x __________________\n", _index_counter);
     uint8_t ret = 0;
 	
 	int csb;
@@ -740,28 +741,42 @@ MB12XX::close_scl_low()
         ret = transfer(&cmd[0], 2, nullptr, 0);
         if (OK != ret) {
             perf_count(_comms_errors);
-            DEVICE_DEBUG("i2c::transfer returned %d", ret);
+            //DEVICE_DEBUG("i2c::transfer returned %d", ret);
+//			printf("END 0xb4 failurd__________ %x _________\n", _index_counter);
             return ret;
-            }
         }
+    }
     
-	  //uint8_t cmd[2] = {2,0x75};
-	
+	//uint8_t cmd[2] = {2,0x75};
 	//	ret = transfer(&cmd[0], 2,nullptr, 0);
 
+    uint8_t cmd1[2] = {0x02,0xc3};
+    bool enable_a= _index_counter == 0x74;
+	bool enable_b= _index_counter == 0x69;
+	bool enable_c= _index_counter == 0x68;
+	
+	if( enable_a||enable_b||enable_c){
+		//ret = transfer(&cmd2[0], 2,nullptr, 0);
+	}else{
+		ret = transfer(&cmd1[0], 2,nullptr, 0);
+	}
 
-    uint8_t cmd[2] = {2,0xc3};
 
-    ret = transfer(&cmd[0], 2,nullptr, 0);
 
 	
     if (OK != ret) {
+	//	PX4_ZK("lllll");
         perf_count(_comms_errors);
-        DEVICE_DEBUG("i2c::transfer returned %d", ret);
+        //DEVICE_DEBUG("i2c::transfer returned %d", ret);
+//        if( enable_a||enable_b)
+//			printf("END 0xc2 failurd__________ %x _________\n", _index_counter);
+//		else
+//			printf("END 0xc3 failurd__________ %x _________\n", _index_counter);
         return ret;
     }
 
     ret = OK;
+//	printf("END OK ________ %x __________________\n", _index_counter);
     return ret;
 }
 
@@ -993,7 +1008,6 @@ MB12XX::collect()
 		}
 #endif/*__DISTANCE_FILTER__*/	
 
-
 	struct distance_sensor_s report;
 	report.timestamp = hrt_absolute_time();
 	report.min_distance = get_minimum_distance();
@@ -1012,7 +1026,15 @@ MB12XX::collect()
 	if(_sonar_id == 2){
 		mb12xx_up_dis = _curent_distance;
 	}
-PX4_ZK("mb12xx_front_dis %.2f,mb12xx_back_dis %.2f mb12xx_up_dis %.2f",(double)mb12xx_front_dis,(double)mb12xx_back_dis,(double)mb12xx_up_dis);
+//	if(nnnnn ==4){
+//		PX4_ZK("mb12xx_front_dis %.2f,mb12xx_back_dis %.2f mb12xx_up_dis %.2f",(double)mb12xx_front_dis,(double)mb12xx_back_dis,(double)mb12xx_up_dis);
+//		nnnnn = 0;
+//	}else{
+//		nnnnn++;
+//	}
+
+
+
 //if(report.id == 0)
 //printf("_curent_distance %.2f,report.id %d  \n ",(double)_curent_distance,report.id);
 	switch(_sonar_id){
@@ -1223,7 +1245,10 @@ void
 start(uint8_t rotation)
 {
 	int fd;
-
+//	int num = 0;
+//	printf("__________________________________________\n");
+///continue_start:
+	
 	if (g_dev != nullptr) {
 		errx(1, "already started");
 	}
@@ -1259,6 +1284,10 @@ fail:
 		g_dev = nullptr;
 	}
 
+//	num++;
+	
+	//printf("______________num : %d_______________________", num);
+//	goto continue_start;
 	errx(1, "driver start failed");
 }
 
@@ -1385,6 +1414,7 @@ info()
 int
 mb12xx_main(int argc, char *argv[])
 {
+	//printf("Enter mb12xx_main!   _____________________________________\n ");
 	int ch;
 	int myoptind = 1;
 

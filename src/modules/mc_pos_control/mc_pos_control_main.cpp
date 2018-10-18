@@ -95,10 +95,12 @@
 
 static float xx=0.0f;
 static float yy=0.0f;
-#endif/*	__DAVID_CHAO_WARING__*/
-
 //static int nnnn=0;
 //static int bbbb=0;
+
+#endif/*	__DAVID_CHAO_WARING__*/
+
+
 
 /**
  * Multicopter position control app start / stop handling function
@@ -264,6 +266,7 @@ private:
 #if __DAVID_CHAO_WARING__
 		(ParamFloat<px4::params::WARN_DIS_Y>) warn_dis_yuan,
 		(ParamFloat<px4::params::WARN_DIS_J>) warn_dis_jin,
+		(ParamFloat<px4::params::WARN_MID_CONTROL>) warn_mid_control,
 		(ParamInt<px4::params::COUNT_WARN>) count_warn,
 #endif/*__DAVID_CHAO_WARING__*/
 		(ParamInt<px4::params::MPC_ALT_MODE>) _alt_mode,
@@ -2935,34 +2938,50 @@ MulticopterPositionControl::generate_attitude_setpoint()
 #if  __DAVID_CHAO_WARING__
 
 	if(_manual.loiter_switch==1){
-		if(_manual.x>0){
-       		 if(_current_distance_front>warn_dis_jin.get()) 
+		
+		float warn_mid_control_value = warn_mid_control.get();
+		float warn_dis_jin_value = warn_dis_jin.get();
+		float warn_dis_yuan_value = warn_dis_yuan.get();
+		
+		if((_manual.x-warn_mid_control_value)>0){
+       		 if(_current_distance_front>warn_dis_jin_value) 
 			 {
-			    float ratio_front = math::constrain((_current_distance_front - warn_dis_jin.get())/(warn_dis_yuan.get()-warn_dis_jin.get()),0.0f,1.0f);
+			    float ratio_front = math::constrain((_current_distance_front - warn_dis_jin_value)/(warn_dis_yuan_value-warn_dis_jin_value),0.0f,1.0f);
   		//		PX4_ZK("ratio_front %.2f _current_distance_front %.2f",(double)ratio_front,(double)_current_distance_front);
-				_manual_x_tmp= _manual.x * ratio_front;
+				_manual_x_tmp= warn_mid_control_value + (_manual.x-warn_mid_control_value)* ratio_front;
 			 }else{
-				_manual_x_tmp= 0;
+			 	if(_current_distance_front>0.7f){
+					_manual_x_tmp= -0.2f;
+				}else if(_current_distance_front>0.3f&&_current_distance_front<0.7f){
+					_manual_x_tmp= -0.3f;
+				}else{
+					_manual_x_tmp= -0.6f;
+				}
 			 }
 		}else{
-		     if(_current_distance_back>warn_dis_jin.get()) 
+		     if(_current_distance_back>warn_dis_jin_value) 
 		     {
-				float ratio_back = math::constrain((_current_distance_back - warn_dis_jin.get())/(warn_dis_yuan.get()-warn_dis_jin.get()),0.0f,1.0f);
+				float ratio_back = math::constrain((_current_distance_back - warn_dis_jin_value)/(warn_dis_yuan_value-warn_dis_jin_value),0.0f,1.0f);
 				//PX4_ZK("ratio_back %.2f _current_distance_back %.2f",(double)ratio_back,(double)_current_distance_back);
-				_manual_x_tmp= _manual.x * ratio_back;
+				_manual_x_tmp = warn_mid_control_value + (_manual.x- warn_mid_control_value)* ratio_back;
 		    	}else{
-				_manual_x_tmp= 0;
+					if(_current_distance_back>0.7f){
+						_manual_x_tmp= 0.2f;
+					}else if(_current_distance_back>0.3f&&_current_distance_back<0.7f){
+						_manual_x_tmp= 0.3f;
+					}else{
+						_manual_x_tmp= 0.6f;
+					}
 			}
 		}
-
 			 xx = _manual_x_tmp * _man_tilt_max;
 		     yy = _manual.y * _man_tilt_max;
+			 
 //if(nnnn==50){
-//			 PX4_ZK("-A- front %.2f back %.2f  xx  %.2f _manual_x_tmp %.2f ",(double)_current_distance_front,(double)_current_distance_back,(double)xx,(double)_manual_x_tmp,(double)_manual.y );
+//			 PX4_ZK("-A- front %.2f back %.2f  _manual.x  %.2f _manual_x_tmp %.2f ",(double)_current_distance_front,(double)_current_distance_back,(double)_manual.x,(double)_manual_x_tmp);
 //	nnnn=0;
 //}else{
 //	nnnn++;
-
 //}
 		}else{
 		

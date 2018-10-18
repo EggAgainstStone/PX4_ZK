@@ -466,6 +466,18 @@ PARAM_DEFINE_FLOAT(WARN_DIS_Y, 4.0f);
  * @decimal 2
  */
 PARAM_DEFINE_FLOAT(WARN_DIS_J, 1.0f);
+/**
+ * warning middle control
+ *
+ * warning middle control
+ *
+ * @group ZHIKUN
+ * @unit meter
+ * @min -1
+ * @max 1
+ * @decimal 3
+ */
+PARAM_DEFINE_FLOAT(WARN_MID_CONTROL, 0.00f);
 
 #endif/*__DAVID_CHAO_WARING__*/
 

@@ -33,7 +33,8 @@
 px4_add_module(
 	MODULE drivers__mb12xx
 	MAIN mb12xx
-	STACK_MAIN 1600
+	STACK_MAIN 1200
+	STACK_MAX 16000
 	COMPILE_FLAGS
 		-Wno-sign-compare
 	SRCS

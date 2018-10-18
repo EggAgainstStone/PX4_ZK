@@ -33,7 +33,7 @@
 #define __BATT_POWER_BRICK__ 					(1)//to fix the power2 problem
 #define __DAVID_CHECKBATTERY__					(1)//to fix the low power not to arm plane problem
 
-#define __DAVID_CHAO_WARING__                   (0)//chaoshengbo front back low and 
+#define __DAVID_CHAO_WARING__                   (1)//chaoshengbo front back low and 
 #define __DAVID_ARMED_FIX1__                    (0)//to fix the disarm the plane the stick is left and down problem
 #define __DAVID_YAW_FIX_ARM__					(0)
 
